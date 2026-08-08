@@ -1,8 +1,2 @@
 [build]
-builder = "nixpacks"
-
-[build.nixpacks]
-providers = ["nodejs-npm"]
-
-[deploy]
-startCommand = "node server.js"
+builder = "dockerfile"
