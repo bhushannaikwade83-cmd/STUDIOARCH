@@ -8,13 +8,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
 import { createHash } from 'crypto';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,9 +28,6 @@ let b2AuthCache = null;
 // Middleware
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], allowedHeaders: ['Content-Type', 'X-File-Name', 'Authorization'], }));
 app.use(express.raw({ type: '*/*', limit: '500mb' }));
-
-// Serve static files
-app.use(express.static(path.join(__dirname, 'dist')));
 
 // Health
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
@@ -101,11 +93,6 @@ app.post('/b2-upload', async (req, res) => {
     console.error('❌ Error:', error.message);
     res.status(400).json({ success: false, error: error.message });
   }
-});
-
-// React Router SPA fallback
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 // Start
