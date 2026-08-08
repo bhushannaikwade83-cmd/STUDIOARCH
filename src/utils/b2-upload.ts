@@ -15,8 +15,8 @@ export async function uploadToB2(
 
     if (onProgress) onProgress(10);
 
-    // Use Supabase Edge Function endpoint (no size limits!)
-    const apiUrl = 'https://qjjkfrncnarqifzkjnyc.supabase.co/functions/v1/b2-upload';
+    // Use Railway backend endpoint
+    const apiUrl = 'https://studioarch-production.up.railway.app/b2-upload';
 
     console.log('Using API endpoint:', apiUrl);
     console.log('Request details:', {
