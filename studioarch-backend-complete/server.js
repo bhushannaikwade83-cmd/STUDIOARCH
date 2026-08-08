@@ -5,6 +5,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fetch from 'node-fetch';
 import { createHash } from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -13,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables
-dotenv.config({ path: path.join(__dirname, '.env.local') });
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -135,7 +136,7 @@ app.get('/health', (req, res) => {
 });
 
 // B2 Upload endpoint
-app.post('/api/b2-upload', async (req, res) => {
+app.post('/b2-upload', async (req, res) => {
   console.log('\n📨 Upload request:');
   console.log('  File size:', req.body?.length || 0, 'bytes');
   console.log('  Content-Type:', req.headers['content-type']);
@@ -198,7 +199,7 @@ app.use((req, res) => {
 // === START SERVER ===
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log('\n🚀 B2 Upload Server running on http://localhost:' + PORT);
-  console.log('📤 Upload endpoint: POST http://localhost:' + PORT + '/api/b2-upload');
+  console.log('📤 Upload endpoint: POST http://localhost:' + PORT + '/b2-upload');
   console.log('✅ Server ready for requests\n');
 });
 
