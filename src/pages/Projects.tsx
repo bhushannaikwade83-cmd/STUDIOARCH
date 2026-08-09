@@ -122,9 +122,16 @@ export default function Projects() {
     }
   }, [supabaseProjects]);
 
-  // Auto-advance slideshow when project is selected
+  // Auto-advance slideshow when project is selected (but NOT when video is playing)
   useEffect(() => {
     if (!selectedProject || selectedProject.images.length <= 1) return;
+
+    // Don't auto-advance if current item is a video
+    const currentImage = selectedProject.images[selectedImageIndex];
+    if (isVideoUrl(currentImage)) {
+      console.log('🎬 Video detected - auto-slide paused');
+      return;
+    }
 
     const startSlideshow = () => {
       slideshowIntervalRef.current = setInterval(() => {
@@ -139,7 +146,7 @@ export default function Projects() {
         clearInterval(slideshowIntervalRef.current);
       }
     };
-  }, [selectedProject]);
+  }, [selectedProject, selectedImageIndex]);
 
   // Filter projects by selected category
   const filteredProjects = selectedCategoryFromState
