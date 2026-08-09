@@ -536,7 +536,6 @@ export default function Admin() {
       year: editProjectData.year,
       category: editProjectData.category,
       description: editProjectData.description,
-      images: editingProjectImages,
     });
     if (result.success) {
       setEditingProjectId(null);
@@ -1371,56 +1370,13 @@ export default function Admin() {
                             <textarea value={(editProjectData.description ?? project.description)} onChange={e => setEditProjectData(prev => ({ ...prev, description: e.target.value }))}
                               rows={3} className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-white/40 resize-none" />
                           </div>
-                          <div>
-                            <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Project Images ({editingProjectImages.length}/20)</label>
-                            <div className="space-y-2 mb-3">
-                              {editingProjectImages.map((img, idx) => (
-                                <div key={idx} className="flex items-center gap-2 bg-white/5 p-2 rounded border border-white/10">
-                                  {isVideoUrl(img) ? (
-                                    <div className="w-12 h-12 rounded bg-black/50 flex items-center justify-center flex-shrink-0">
-                                      <span className="text-lg">🎬</span>
-                                    </div>
-                                  ) : (
-                                    <img src={img} alt={`Project ${idx + 1}`} className="w-12 h-12 object-cover rounded" />
-                                  )}
-                                  <span className="text-xs text-stone-400 flex-1 truncate">{img.substring(0, 40)}...</span>
-                                  <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleRemoveProjectImage(idx)} className="p-1 bg-red-500/20 border border-red-500/40 rounded hover:bg-red-500/30">
-                                    <Trash2 size={12} className="text-red-400" />
-                                  </motion.button>
-                                </div>
-                              ))}
-                            </div>
-                            {editingProjectImages.length < 20 && (
-                              <div className="space-y-2">
-                                <input type="text" value={newProjectImageUrl} onChange={e => setNewProjectImageUrl(e.target.value)} placeholder="Image URL or upload file" className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm placeholder-stone-500 focus:outline-none focus:border-white/40" />
-                                <input type="file" multiple accept="image/*,video/*" onChange={e => handleSelectEditFiles(e.target.files)} className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-stone-400 text-sm file:bg-white file:text-black file:px-2 file:py-1 file:border-0 file:rounded file:text-xs file:cursor-pointer file:mr-2 hover:file:bg-stone-200" />
-                                {selectedEditFiles && (
-                                  <motion.button
-                                    type="button"
-                                    onClick={handleUploadEditFiles}
-                                    disabled={isUploadingEdit}
-                                    whileHover={isUploadingEdit ? {} : { scale: 1.02 }}
-                                    className={`w-full px-3 py-2 rounded text-xs uppercase tracking-widest flex items-center justify-center gap-2 ${
-                                      isUploadingEdit
-                                        ? 'bg-blue-400/20 border border-blue-400/40 text-blue-300 cursor-wait'
-                                        : 'bg-blue-500/20 border border-blue-500/40 text-blue-300 hover:bg-blue-500/30'
-                                    }`}
-                                  >
-                                    {isUploadingEdit ? '⏳ Uploading...' : '📤 Upload Files'}
-                                  </motion.button>
-                                )}
-                              </div>
-                            )}
-                          </div>
                           <div className="flex gap-2">
                             <motion.button whileHover={{ scale: 1.02 }} onClick={() => {
-                              setEditProjectData(prev => ({ ...prev, images: editingProjectImages }));
                               handleSaveProject(project.id);
-                              setEditingProjectImages([]);
                             }} className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded text-sm uppercase tracking-widest hover:bg-stone-200">
                               <Check size={14} /> Save
                             </motion.button>
-                            <motion.button whileHover={{ scale: 1.02 }} onClick={() => { setEditingProjectId(null); setEditProjectData({}); setEditingProjectImages([]); }} className="px-4 py-2 bg-white/10 border border-white/20 rounded text-sm uppercase tracking-widest hover:bg-white/20">Cancel</motion.button>
+                            <motion.button whileHover={{ scale: 1.02 }} onClick={() => { setEditingProjectId(null); setEditProjectData({}); }} className="px-4 py-2 bg-white/10 border border-white/20 rounded text-sm uppercase tracking-widest hover:bg-white/20">Cancel</motion.button>
                           </div>
                         </div>
                       ) : (
@@ -1446,7 +1402,7 @@ export default function Admin() {
                             )}
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
-                            <motion.button whileHover={{ scale: 1.05 }} onClick={() => { setEditingProjectId(project.id); setEditProjectData({}); setEditingProjectImages(project.images || []); }}
+                            <motion.button whileHover={{ scale: 1.05 }} onClick={() => { setEditingProjectId(project.id); setEditProjectData({}); }}
                               className="px-4 py-2 bg-white/10 border border-white/20 rounded text-sm uppercase tracking-widest hover:bg-white/20">Edit</motion.button>
                             <motion.button whileHover={{ scale: 1.05 }} onClick={() => handleDeleteProject(project.id)}
                               className="p-2 bg-red-500/20 border border-red-500/40 rounded hover:bg-red-500/30">
