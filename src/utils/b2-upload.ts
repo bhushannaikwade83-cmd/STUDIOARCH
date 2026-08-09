@@ -21,8 +21,8 @@ export async function uploadToB2(
 
     if (onProgress) onProgress(10);
 
-    // Use Railway backend endpoint
-    const apiUrl = 'https://studioarch-production.up.railway.app/b2-upload';
+    // Use custom domain backend endpoint
+    const apiUrl = 'https://api.1studio-arch.com/b2-upload';
 
     console.log('🔗 [B2 Upload] Using endpoint:', apiUrl);
     console.log('📋 [B2 Upload] Request headers:', {
