@@ -466,9 +466,9 @@ export default function Projects() {
                     )}
                   </div>
 
-                  {/* Image Counter */}
+                  {/* Media Counter */}
                   <div className="text-sm text-stone-500 mb-4">
-                    Image {selectedImageIndex + 1} of {selectedProject.images.length}
+                    {isVideoUrl(selectedProject.images[selectedImageIndex]) ? '🎬 Video' : '🖼️ Image'} {selectedImageIndex + 1} of {selectedProject.images.length}
                   </div>
 
                   {/* Image Navigation Thumbnails */}
