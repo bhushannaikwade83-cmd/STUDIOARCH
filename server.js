@@ -35,16 +35,43 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 // B2 Auth
 async function authorizeB2() {
   const now = Date.now();
-  if (b2AuthCache && b2AuthCache.expiresAt > now) return b2AuthCache;
+  if (b2AuthCache && b2AuthCache.expiresAt > now) {
+    console.log('✅ [B2 Auth] Using cached auth token');
+    return b2AuthCache;
+  }
+
+  console.log('🔐 [B2 Auth] Starting B2 authorization...');
+  console.log('📋 [B2 Auth] Credentials check:', {
+    hasKeyId: !!B2_KEY_ID,
+    hasAppKey: !!B2_APPLICATION_KEY,
+    keyIdLength: B2_KEY_ID?.length || 0,
+    appKeyLength: B2_APPLICATION_KEY?.length || 0,
+  });
 
   const basic = Buffer.from(`${B2_KEY_ID}:${B2_APPLICATION_KEY}`).toString('base64');
+  console.log('🔑 [B2 Auth] Base64 auth prepared, length:', basic.length);
+
   const res = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
     method: 'GET',
     headers: { Authorization: `Basic ${basic}` },
   });
 
-  if (!res.ok) throw new Error('B2 auth failed');
+  console.log('📡 [B2 Auth] Response status:', res.status, res.statusText);
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('❌ [B2 Auth] Auth failed:', {
+      status: res.status,
+      statusText: res.statusText,
+      errorBody: errorText,
+      timestamp: new Date().toISOString()
+    });
+    throw new Error(`B2 auth failed: ${res.status} ${errorText}`);
+  }
+
   const data = await res.json();
+  console.log('✅ [B2 Auth] Success! Got API URL:', data.apiUrl);
+
   b2AuthCache = { apiUrl: data.apiUrl, authToken: data.authorizationToken, expiresAt: now + 3600000 };
   return b2AuthCache;
 }
@@ -65,13 +92,26 @@ app.post('/b2-upload', async (req, res) => {
     const fileName = req.headers['x-file-name'] || 'file';
     const fileData = req.body;
 
-    console.log(`📤 Uploading: ${fileName}`);
+    console.log('📤 [Upload] Starting upload:', {
+      fileName,
+      fileSize: fileData?.length || 0,
+      timestamp: new Date().toISOString()
+    });
 
     // B2 Auth & Upload
+    console.log('🔐 [Upload] Step 1: Authorizing with B2...');
     const auth = await authorizeB2();
-    const urlData = await getB2UploadUrl(auth);
-    const sha1 = createHash('sha1').update(fileData).digest('hex');
+    console.log('✅ [Upload] Step 1 complete: Got auth token');
 
+    console.log('🔗 [Upload] Step 2: Getting upload URL...');
+    const urlData = await getB2UploadUrl(auth);
+    console.log('✅ [Upload] Step 2 complete: Got upload URL');
+
+    console.log('📋 [Upload] Step 3: Computing SHA1...');
+    const sha1 = createHash('sha1').update(fileData).digest('hex');
+    console.log('✅ [Upload] Step 3 complete: SHA1 =', sha1);
+
+    console.log('📨 [Upload] Step 4: Uploading to B2...');
     const uploadRes = await fetch(urlData.uploadUrl, {
       method: 'POST',
       headers: {
@@ -83,14 +123,29 @@ app.post('/b2-upload', async (req, res) => {
       body: fileData,
     });
 
-    if (!uploadRes.ok) throw new Error('B2 upload failed');
+    console.log('📡 [Upload] Response status:', uploadRes.status, uploadRes.statusText);
+
+    if (!uploadRes.ok) {
+      const errorText = await uploadRes.text();
+      console.error('❌ [Upload] Upload failed:', {
+        status: uploadRes.status,
+        statusText: uploadRes.statusText,
+        errorBody: errorText
+      });
+      throw new Error(`B2 upload failed: ${uploadRes.status} ${errorText}`);
+    }
+
     const result = await uploadRes.json();
     const b2Url = `https://f${result.fileId.slice(0, 3)}.backblazeb2.com/file/${B2_BUCKET_NAME}/${result.fileName}`;
 
-    console.log(`✅ Success: ${b2Url}`);
+    console.log('✅ [Upload] SUCCESS! File URL:', b2Url);
     res.json({ success: true, url: b2Url });
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error('❌ [Upload] Error caught:', {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
     res.status(400).json({ success: false, error: error.message });
   }
 });
