@@ -685,21 +685,37 @@ export default function Admin() {
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🚀 Starting project creation...');
+    console.log('📝 Project Data:', newProjectData);
+    console.log('🖼️ Project Images:', newProjectImages);
+
     if (!newProjectData.name?.trim()) {
+      console.error('❌ Project name is required');
       showSuccessNotification('Enter project name');
       return;
     }
 
-    const result = await insertProject('projects', {
+    const projectData = {
       name: newProjectData.name.trim(),
       location: newProjectData.location?.trim() || '',
       year: newProjectData.year || new Date().getFullYear().toString(),
       category: newProjectData.category?.trim() || '',
       description: newProjectData.description?.trim() || '',
       images: newProjectImages.length > 0 ? newProjectImages : ['/architecture-1.jpg'],
+    };
+
+    console.log('📤 Sending to Supabase:', {
+      table: 'projects',
+      data: projectData
     });
 
+    const result = await insertProject('projects', projectData);
+
+    console.log('📥 Supabase Response:', result);
+
     if (result.success) {
+      console.log('✅ Project created successfully!');
+      console.log('📊 New Project ID:', result.data?.[0]?.id);
       setNewProjectData({ name: '', location: '', year: new Date().getFullYear().toString(), category: '', description: '' });
       setNewProjectImages([]);
       setSelectedProjectFiles(null);
@@ -708,7 +724,8 @@ export default function Admin() {
       refetchProjects();
       showSuccessNotification('✅ Project created successfully!');
     } else {
-      showSuccessNotification('Failed to create project');
+      console.error('❌ Project creation failed:', result.error);
+      showSuccessNotification('Failed to create project: ' + result.error);
     }
   };
 

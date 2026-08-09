@@ -11,21 +11,23 @@ export async function uploadToB2(
   try {
     const sanitizedFileName = fileName.replace(/\s+/g, '_');
 
-    console.log('Starting B2 upload:', { originalName: fileName, sanitizedName: sanitizedFileName, fileSize: file.size });
+    console.log('🚀 [B2 Upload] Starting upload:', {
+      originalName: fileName,
+      sanitizedName: sanitizedFileName,
+      fileSize: file.size,
+      fileType: file.type,
+      timestamp: new Date().toISOString()
+    });
 
     if (onProgress) onProgress(10);
 
     // Use Railway backend endpoint
     const apiUrl = 'https://studioarch-production.up.railway.app/b2-upload';
 
-    console.log('Using API endpoint:', apiUrl);
-    console.log('Request details:', {
-      method: 'POST',
-      headers: {
-        'X-File-Name': sanitizedFileName,
-        'Content-Type': file.type || 'application/octet-stream',
-      },
-      bodySize: file.size
+    console.log('🔗 [B2 Upload] Using endpoint:', apiUrl);
+    console.log('📋 [B2 Upload] Request headers:', {
+      'X-File-Name': sanitizedFileName,
+      'Content-Type': file.type || 'application/octet-stream',
     });
 
     const response = await fetch(apiUrl, {
@@ -37,20 +39,36 @@ export async function uploadToB2(
       body: file,
     });
 
-    console.log('Response status:', response.status, response.statusText);
+    console.log('📡 [B2 Upload] Response received:', {
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get('content-type'),
+      timestamp: new Date().toISOString()
+    });
 
     if (onProgress) onProgress(50);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error('❌ [B2 Upload] Server error:', {
+        status: response.status,
+        errorData,
+        timestamp: new Date().toISOString()
+      });
       throw new Error(errorData.error || `Upload failed (${response.status})`);
     }
 
     const data = await response.json();
 
+    console.log('✅ [B2 Upload] Response data:', {
+      url: data.url,
+      fileId: data.fileId,
+      timestamp: new Date().toISOString()
+    });
+
     if (onProgress) onProgress(100);
 
-    console.log('✅ B2 upload successful:', data.url);
+    console.log('✅ [B2 Upload] Upload successful!');
 
     return {
       success: true,
@@ -58,7 +76,11 @@ export async function uploadToB2(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('B2 upload error:', errorMessage, error);
+    console.error('❌ [B2 Upload] Upload failed:', {
+      error: errorMessage,
+      fullError: error,
+      timestamp: new Date().toISOString()
+    });
     return {
       success: false,
       error: errorMessage,

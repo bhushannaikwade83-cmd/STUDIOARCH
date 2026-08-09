@@ -17,10 +17,17 @@ export function useSupabaseTable(table, options = {}) {
       setLoading(true)
       setError(null)
 
+      console.log(`📥 [Supabase Fetch] Starting fetch from "${table}":`, {
+        table,
+        options,
+        timestamp: new Date().toISOString()
+      })
+
       let query = supabase.from(table).select(options.select || '*')
 
       // Apply filters
       if (options.filters) {
+        console.log(`🔍 [Supabase Fetch] Applying filters:`, options.filters)
         Object.entries(options.filters).forEach(([key, value]) => {
           query = query.eq(key, value)
         })
@@ -28,6 +35,10 @@ export function useSupabaseTable(table, options = {}) {
 
       // Apply ordering
       if (options.orderBy) {
+        console.log(`📊 [Supabase Fetch] Applying order:`, {
+          orderBy: options.orderBy,
+          ascending: options.ascending !== false
+        })
         query = query.order(options.orderBy, {
           ascending: options.ascending !== false,
         })
@@ -35,15 +46,38 @@ export function useSupabaseTable(table, options = {}) {
 
       // Apply limit
       if (options.limit) {
+        console.log(`⛔ [Supabase Fetch] Applying limit:`, options.limit)
         query = query.limit(options.limit)
       }
 
       const { data: result, error: err } = await query
 
-      if (err) throw err
+      if (err) {
+        console.error(`❌ [Supabase Fetch] Supabase error from "${table}":`, {
+          table,
+          error: err,
+          message: err.message,
+          code: err.code,
+          timestamp: new Date().toISOString()
+        })
+        throw err
+      }
+
+      console.log(`✅ [Supabase Fetch] Success from "${table}":`, {
+        table,
+        recordCount: result?.length || 0,
+        firstRecord: result?.[0],
+        timestamp: new Date().toISOString()
+      })
+
       setData(result || [])
     } catch (err) {
-      console.error(`Error fetching from ${table}:`, err)
+      console.error(`❌ [Supabase Fetch] Exception from "${table}":`, {
+        table,
+        errorMessage: err.message,
+        fullError: err,
+        timestamp: new Date().toISOString()
+      })
       setError(err.message || 'Failed to fetch data')
       setData([])
     } finally {
@@ -209,15 +243,46 @@ export function useSupabaseMutation() {
     try {
       setLoading(true)
       setError(null)
+
+      console.log(`📤 [Supabase Insert] Starting insert into "${table}":`, {
+        table,
+        dataKeys: Object.keys(data),
+        dataSize: JSON.stringify(data).length,
+        timestamp: new Date().toISOString()
+      })
+      console.log(`📋 [Supabase Insert] Data:`, data)
+
       const { data: result, error: err } = await supabase
         .from(table)
         .insert([data])
         .select()
 
-      if (err) throw err
+      if (err) {
+        console.error(`❌ [Supabase Insert] Supabase error:`, {
+          table,
+          error: err,
+          message: err.message,
+          code: err.code,
+          timestamp: new Date().toISOString()
+        })
+        throw err
+      }
+
+      console.log(`✅ [Supabase Insert] Success:`, {
+        table,
+        insertedRecords: result?.length,
+        firstRecord: result?.[0],
+        timestamp: new Date().toISOString()
+      })
+
       return { success: true, data: result }
     } catch (err) {
-      console.error(`Error inserting into ${table}:`, err)
+      console.error(`❌ [Supabase Insert] Exception:`, {
+        table,
+        errorMessage: err.message,
+        fullError: err,
+        timestamp: new Date().toISOString()
+      })
       setError(err.message || 'Insert failed')
       return { success: false, error: err.message }
     } finally {
