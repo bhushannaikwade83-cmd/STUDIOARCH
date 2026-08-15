@@ -1,4 +1,6 @@
 import mysql from 'mysql2/promise.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
@@ -137,4 +139,43 @@ export async function deleteContactMessage(id) {
   const sql = 'DELETE FROM contact_messages WHERE id=?';
   await query(sql, [id]);
   console.log('✅ [Database] Message deleted');
+}
+
+// Authentication
+export async function loginUser(email, password) {
+  console.log('🔐 [Auth] Login attempt:', email);
+  const sql = 'SELECT * FROM users WHERE email=?';
+  const results = await query(sql, [email]);
+
+  if (results.length === 0) {
+    console.error('❌ [Auth] User not found:', email);
+    throw new Error('Invalid email or password');
+  }
+
+  const user = results[0];
+  const passwordMatch = await bcrypt.compare(password, user.password);
+
+  if (!passwordMatch) {
+    console.error('❌ [Auth] Password mismatch for:', email);
+    throw new Error('Invalid email or password');
+  }
+
+  const token = jwt.sign(
+    { id: user.id, email: user.email, role: user.role },
+    process.env.JWT_SECRET || 'secret',
+    { expiresIn: '24h' }
+  );
+
+  console.log('✅ [Auth] Login successful:', email);
+  return { token, user: { id: user.id, email: user.email, role: user.role } };
+}
+
+export function verifyToken(token) {
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    return decoded;
+  } catch (error) {
+    console.error('❌ [Auth] Token verification failed:', error.message);
+    return null;
+  }
 }

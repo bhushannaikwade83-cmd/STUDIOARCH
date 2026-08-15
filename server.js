@@ -27,8 +27,25 @@ console.log('  B2:', B2_BUCKET_NAME ? '✅' : '❌');
 let b2AuthCache = null;
 
 // Middleware
-app.use(cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], allowedHeaders: ['Content-Type', 'X-File-Name', 'Authorization'], }));
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'X-File-Name', 'Authorization'], }));
 app.use(express.raw({ type: '*/*', limit: '500mb' }));
+app.use(express.json());
+
+// Auth Middleware
+const authMiddleware = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const user = db.verifyToken(token);
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+
+  req.user = user;
+  next();
+};
 
 // Health
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
@@ -151,6 +168,23 @@ app.post('/b2-upload', async (req, res) => {
   }
 });
 
+// ===== AUTH ENDPOINTS =====
+
+// Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+    const result = await db.loginUser(email, password);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ /api/auth/login error:', error.message);
+    res.status(401).json({ error: error.message });
+  }
+});
+
 // ===== API ENDPOINTS =====
 
 // Projects
@@ -164,7 +198,7 @@ app.get('/api/projects', async (req, res) => {
   }
 });
 
-app.post('/api/projects', async (req, res) => {
+app.post('/api/projects', authMiddleware, async (req, res) => {
   try {
     const project = await db.createProject(req.body);
     res.json(project);
@@ -174,7 +208,7 @@ app.post('/api/projects', async (req, res) => {
   }
 });
 
-app.put('/api/projects/:id', async (req, res) => {
+app.put('/api/projects/:id', authMiddleware, async (req, res) => {
   try {
     await db.updateProject(req.params.id, req.body);
     res.json({ success: true });
@@ -184,7 +218,7 @@ app.put('/api/projects/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/projects/:id', async (req, res) => {
+app.delete('/api/projects/:id', authMiddleware, async (req, res) => {
   try {
     await db.deleteProject(req.params.id);
     res.json({ success: true });
@@ -205,7 +239,7 @@ app.get('/api/event-videos', async (req, res) => {
   }
 });
 
-app.post('/api/event-videos', async (req, res) => {
+app.post('/api/event-videos', authMiddleware, async (req, res) => {
   try {
     const video = await db.createEventVideo(req.body);
     res.json(video);
@@ -215,7 +249,7 @@ app.post('/api/event-videos', async (req, res) => {
   }
 });
 
-app.delete('/api/event-videos/:id', async (req, res) => {
+app.delete('/api/event-videos/:id', authMiddleware, async (req, res) => {
   try {
     await db.deleteEventVideo(req.params.id);
     res.json({ success: true });
@@ -236,7 +270,7 @@ app.get('/api/journal-posts', async (req, res) => {
   }
 });
 
-app.post('/api/journal-posts', async (req, res) => {
+app.post('/api/journal-posts', authMiddleware, async (req, res) => {
   try {
     const post = await db.createJournalPost(req.body);
     res.json(post);
@@ -246,7 +280,7 @@ app.post('/api/journal-posts', async (req, res) => {
   }
 });
 
-app.delete('/api/journal-posts/:id', async (req, res) => {
+app.delete('/api/journal-posts/:id', authMiddleware, async (req, res) => {
   try {
     await db.deleteJournalPost(req.params.id);
     res.json({ success: true });
@@ -277,7 +311,7 @@ app.post('/api/contact-messages', async (req, res) => {
   }
 });
 
-app.delete('/api/contact-messages/:id', async (req, res) => {
+app.delete('/api/contact-messages/:id', authMiddleware, async (req, res) => {
   try {
     await db.deleteContactMessage(req.params.id);
     res.json({ success: true });
