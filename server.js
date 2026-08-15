@@ -8,6 +8,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
 import { createHash } from 'crypto';
+import * as db from './db.js';
 
 dotenv.config();
 
@@ -147,6 +148,142 @@ app.post('/b2-upload', async (req, res) => {
       timestamp: new Date().toISOString()
     });
     res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// ===== API ENDPOINTS =====
+
+// Projects
+app.get('/api/projects', async (req, res) => {
+  try {
+    const projects = await db.getProjects();
+    res.json(projects);
+  } catch (error) {
+    console.error('❌ /api/projects error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/projects', async (req, res) => {
+  try {
+    const project = await db.createProject(req.body);
+    res.json(project);
+  } catch (error) {
+    console.error('❌ /api/projects POST error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/projects/:id', async (req, res) => {
+  try {
+    await db.updateProject(req.params.id, req.body);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ /api/projects PUT error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/projects/:id', async (req, res) => {
+  try {
+    await db.deleteProject(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ /api/projects DELETE error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Event Videos
+app.get('/api/event-videos', async (req, res) => {
+  try {
+    const videos = await db.getEventVideos();
+    res.json(videos);
+  } catch (error) {
+    console.error('❌ /api/event-videos error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/event-videos', async (req, res) => {
+  try {
+    const video = await db.createEventVideo(req.body);
+    res.json(video);
+  } catch (error) {
+    console.error('❌ /api/event-videos POST error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/event-videos/:id', async (req, res) => {
+  try {
+    await db.deleteEventVideo(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ /api/event-videos DELETE error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Journal Posts
+app.get('/api/journal-posts', async (req, res) => {
+  try {
+    const posts = await db.getJournalPosts();
+    res.json(posts);
+  } catch (error) {
+    console.error('❌ /api/journal-posts error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/journal-posts', async (req, res) => {
+  try {
+    const post = await db.createJournalPost(req.body);
+    res.json(post);
+  } catch (error) {
+    console.error('❌ /api/journal-posts POST error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/journal-posts/:id', async (req, res) => {
+  try {
+    await db.deleteJournalPost(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ /api/journal-posts DELETE error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Contact Messages
+app.get('/api/contact-messages', async (req, res) => {
+  try {
+    const messages = await db.getContactMessages();
+    res.json(messages);
+  } catch (error) {
+    console.error('❌ /api/contact-messages error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/contact-messages', async (req, res) => {
+  try {
+    const message = await db.createContactMessage(req.body);
+    res.json(message);
+  } catch (error) {
+    console.error('❌ /api/contact-messages POST error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/contact-messages/:id', async (req, res) => {
+  try {
+    await db.deleteContactMessage(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ /api/contact-messages DELETE error:', error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 
