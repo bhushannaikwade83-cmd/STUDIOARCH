@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { LogOut, Menu, X, Home, Settings, Edit2, Image, FileText, ArrowLeft, Youtube, Trash2, Plus, Mail, Check, Download, Zap } from 'lucide-react';
 import { compressImage, compressVideo, formatFileSize, shouldCompress } from '../utils/compression';
 import { uploadToB2 } from '../utils/b2-upload';
-import { useAdminAuth, useProjects, useSupabaseMutation, useJournalPosts, useContactMessages, useGallery, useEventVideos, useContentSettings } from '../hooks/useSupabaseData';
+import { login, logout as logoutAuth, isAuthenticated, getToken } from '../utils/auth';
+import { useProjects, useSupabaseMutation, useJournalPosts, useContactMessages, useGallery, useEventVideos, useContentSettings } from '../hooks/useSupabaseData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
@@ -34,7 +35,6 @@ const DEFAULT_CONTACT = { email: 'inquiry@1studioarch.com', phone: '+44 (0) 20 1
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { loginWithSupabase, logout, restoreSession } = useAdminAuth();
   const { data: supabaseProjects, refetch: refetchProjects, loading: projectsLoading } = useProjects();
   const { data: supabaseJournalPosts, refetch: refetchJournalPosts, loading: journalLoading } = useJournalPosts();
   const { data: contactMessages, refetch: refetchMessages, loading: messagesLoading } = useContactMessages();
@@ -84,14 +84,9 @@ export default function Admin() {
 
   // Restore session on mount
   useEffect(() => {
-    const checkSession = async () => {
-      const result = await restoreSession();
-      if (result.success && result.user) {
-        setIsAuthenticated(true);
-        setUserSession(result.user);
-      }
-    };
-    checkSession();
+    if (isAuthenticated()) {
+      setIsAuthenticated(true);
+    }
   }, []);
 
   // Contact
@@ -437,7 +432,7 @@ export default function Admin() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await loginWithSupabase(email, password);
+    const result = await login(email, password);
     if (result.success) {
       setIsAuthenticated(true);
       setUserSession(result.user);
@@ -451,7 +446,7 @@ export default function Admin() {
   };
 
   const handleLogout = async () => {
-    await logout();
+    logoutAuth();
     setIsAuthenticated(false);
     setUserSession(null);
     setEmail('');
