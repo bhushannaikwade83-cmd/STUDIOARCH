@@ -1,7 +1,7 @@
 // JWT Token Management
 
 const TOKEN_KEY = 'studioarch_jwt_token';
-const API_BASE = 'https://digitrixmedia.com';
+const API_BASE = 'https://digitrixmedia.com/studioarch/api';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);

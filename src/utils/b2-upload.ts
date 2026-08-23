@@ -22,7 +22,7 @@ export async function uploadToB2(
     if (onProgress) onProgress(10);
 
     // Use digitrixmedia backend endpoint
-    const apiUrl = 'https://digitrixmedia.com/b2-upload';
+    const apiUrl = 'https://digitrixmedia.com/studioarch/api/b2-upload';
 
     console.log('🔗 [B2 Upload] Using endpoint:', apiUrl);
     console.log('📋 [B2 Upload] Request headers:', {
