@@ -61,9 +61,10 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-// Health
+// Health (all path variations)
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/studioarch/api/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/studioarch/api/health', (req, res) => res.json({ status: 'ok' }));
 
 // B2 Auth
 async function authorizeB2() {
@@ -109,7 +110,7 @@ async function getB2UploadUrl(auth) {
 }
 
 // Upload endpoint
-app.post('/api/b2-upload', async (req, res) => {
+app.post('/studioarch/api/b2-upload', async (req, res) => {
   try {
     const fileName = req.headers['x-file-name'] || 'file';
     const fileData = req.body;
@@ -150,7 +151,7 @@ app.post('/api/b2-upload', async (req, res) => {
 // ===== AUTH ENDPOINTS =====
 
 // Login
-app.post('/api/auth/login', async (req, res) => {
+app.post('/studioarch/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -179,7 +180,7 @@ app.post('/api/auth/login', async (req, res) => {
 // ===== API ENDPOINTS =====
 
 // Projects
-app.get('/api/projects', async (req, res) => {
+app.get('/studioarch/api/projects', async (req, res) => {
   try {
     const conn = await pool.getConnection();
     const [rows] = await conn.execute('SELECT * FROM projects ORDER BY created_at DESC');
@@ -191,7 +192,7 @@ app.get('/api/projects', async (req, res) => {
   }
 });
 
-app.post('/api/projects', authMiddleware, async (req, res) => {
+app.post('/studioarch/api/projects', authMiddleware, async (req, res) => {
   try {
     const { title, description, images } = req.body;
     const conn = await pool.getConnection();
@@ -207,7 +208,7 @@ app.post('/api/projects', authMiddleware, async (req, res) => {
   }
 });
 
-app.put('/api/projects/:id', authMiddleware, async (req, res) => {
+app.put('/studioarch/api/projects/:id', authMiddleware, async (req, res) => {
   try {
     const { title, description, images } = req.body;
     const conn = await pool.getConnection();
@@ -223,7 +224,7 @@ app.put('/api/projects/:id', authMiddleware, async (req, res) => {
   }
 });
 
-app.delete('/api/projects/:id', authMiddleware, async (req, res) => {
+app.delete('/studioarch/api/projects/:id', authMiddleware, async (req, res) => {
   try {
     const conn = await pool.getConnection();
     await conn.execute('DELETE FROM projects WHERE id = ?', [req.params.id]);
@@ -236,7 +237,7 @@ app.delete('/api/projects/:id', authMiddleware, async (req, res) => {
 });
 
 // Event Videos
-app.get('/api/event-videos', async (req, res) => {
+app.get('/studioarch/api/event-videos', async (req, res) => {
   try {
     const conn = await pool.getConnection();
     const [rows] = await conn.execute('SELECT * FROM event_videos ORDER BY created_at DESC');
@@ -248,7 +249,7 @@ app.get('/api/event-videos', async (req, res) => {
   }
 });
 
-app.post('/api/event-videos', authMiddleware, async (req, res) => {
+app.post('/studioarch/api/event-videos', authMiddleware, async (req, res) => {
   try {
     const { title, url } = req.body;
     const conn = await pool.getConnection();
@@ -264,7 +265,7 @@ app.post('/api/event-videos', authMiddleware, async (req, res) => {
   }
 });
 
-app.delete('/api/event-videos/:id', authMiddleware, async (req, res) => {
+app.delete('/studioarch/api/event-videos/:id', authMiddleware, async (req, res) => {
   try {
     const conn = await pool.getConnection();
     await conn.execute('DELETE FROM event_videos WHERE id = ?', [req.params.id]);
@@ -277,7 +278,7 @@ app.delete('/api/event-videos/:id', authMiddleware, async (req, res) => {
 });
 
 // Journal Posts
-app.get('/api/journal-posts', async (req, res) => {
+app.get('/studioarch/api/journal-posts', async (req, res) => {
   try {
     const conn = await pool.getConnection();
     const [rows] = await conn.execute('SELECT * FROM journal_posts ORDER BY created_at DESC');
@@ -289,7 +290,7 @@ app.get('/api/journal-posts', async (req, res) => {
   }
 });
 
-app.post('/api/journal-posts', authMiddleware, async (req, res) => {
+app.post('/studioarch/api/journal-posts', authMiddleware, async (req, res) => {
   try {
     const { title, content } = req.body;
     const conn = await pool.getConnection();
@@ -305,7 +306,7 @@ app.post('/api/journal-posts', authMiddleware, async (req, res) => {
   }
 });
 
-app.delete('/api/journal-posts/:id', authMiddleware, async (req, res) => {
+app.delete('/studioarch/api/journal-posts/:id', authMiddleware, async (req, res) => {
   try {
     const conn = await pool.getConnection();
     await conn.execute('DELETE FROM journal_posts WHERE id = ?', [req.params.id]);
@@ -318,7 +319,7 @@ app.delete('/api/journal-posts/:id', authMiddleware, async (req, res) => {
 });
 
 // Contact Messages
-app.get('/api/contact-messages', async (req, res) => {
+app.get('/studioarch/api/contact-messages', async (req, res) => {
   try {
     const conn = await pool.getConnection();
     const [rows] = await conn.execute('SELECT * FROM contact_messages ORDER BY created_at DESC');
@@ -330,7 +331,7 @@ app.get('/api/contact-messages', async (req, res) => {
   }
 });
 
-app.post('/api/contact-messages', async (req, res) => {
+app.post('/studioarch/api/contact-messages', async (req, res) => {
   try {
     const { name, email, message } = req.body;
     const conn = await pool.getConnection();
@@ -346,7 +347,7 @@ app.post('/api/contact-messages', async (req, res) => {
   }
 });
 
-app.delete('/api/contact-messages/:id', authMiddleware, async (req, res) => {
+app.delete('/studioarch/api/contact-messages/:id', authMiddleware, async (req, res) => {
   try {
     const conn = await pool.getConnection();
     await conn.execute('DELETE FROM contact_messages WHERE id = ?', [req.params.id]);
