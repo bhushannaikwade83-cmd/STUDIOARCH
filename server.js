@@ -43,8 +43,8 @@ async function initDb() {
 
 // Middleware
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'X-File-Name', 'Authorization'], }));
-app.use(express.raw({ type: '*/*', limit: '500mb' }));
 app.use(express.json());
+app.use(express.raw({ type: ['image/*', 'video/*', 'application/octet-stream'], limit: '500mb' }));
 
 // Auth Middleware
 const authMiddleware = (req, res, next) => {
