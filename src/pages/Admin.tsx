@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { LogOut, Menu, X, Home, Settings, Edit2, Image, FileText, ArrowLeft, Youtube, Trash2, Plus, Mail, Check, Download, Zap } from 'lucide-react';
 import { compressImage, compressVideo, formatFileSize, shouldCompress } from '../utils/compression';
 import { uploadToB2 } from '../utils/b2-upload';
-import { login, logout as logoutAuth, isAuthenticated, getToken } from '../utils/auth';
+import { login, logout as logoutAuth, isAuthenticated as checkAuth } from '../utils/auth';
 import { useProjects, useSupabaseMutation, useJournalPosts, useContactMessages, useGallery, useEventVideos, useContentSettings } from '../hooks/useSupabaseData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
@@ -84,7 +84,7 @@ export default function Admin() {
 
   // Restore session on mount
   useEffect(() => {
-    if (isAuthenticated()) {
+    if (checkAuth()) {
       setIsAuthenticated(true);
     }
   }, []);
