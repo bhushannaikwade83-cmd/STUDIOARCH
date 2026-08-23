@@ -21,8 +21,8 @@ export async function uploadToB2(
 
     if (onProgress) onProgress(10);
 
-    // Use custom domain backend endpoint
-    const apiUrl = 'https://api.1studio-arch.com/b2-upload';
+    // Use digitrixmedia backend endpoint
+    const apiUrl = 'https://digitrixmedia.com/b2-upload';
 
     console.log('🔗 [B2 Upload] Using endpoint:', apiUrl);
     console.log('📋 [B2 Upload] Request headers:', {

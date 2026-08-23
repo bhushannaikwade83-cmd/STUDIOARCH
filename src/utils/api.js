@@ -2,7 +2,7 @@
 
 import { getToken } from './auth.js';
 
-const API_BASE = 'https://api.1studio-arch.com';
+const API_BASE = 'https://digitrixmedia.com';
 
 export async function apiCall(endpoint, options = {}) {
   const token = getToken();
