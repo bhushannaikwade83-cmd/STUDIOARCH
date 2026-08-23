@@ -63,6 +63,7 @@ const authMiddleware = (req, res, next) => {
 
 // Health
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 // B2 Auth
 async function authorizeB2() {
