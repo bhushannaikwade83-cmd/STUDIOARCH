@@ -42,11 +42,11 @@ export async function apiCall(endpoint, options = {}) {
 // Data Fetching
 
 export async function getProjects() {
-  return apiCall('/api/projects');
+  return apiCall('/projects');
 }
 
 export async function createProject(data) {
-  return apiCall('/api/projects', {
+  return apiCall('/projects', {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -64,11 +64,11 @@ export async function deleteProject(id) {
 }
 
 export async function getEventVideos() {
-  return apiCall('/api/event-videos');
+  return apiCall('/event-videos');
 }
 
 export async function createEventVideo(data) {
-  return apiCall('/api/event-videos', {
+  return apiCall('/event-videos', {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -79,11 +79,11 @@ export async function deleteEventVideo(id) {
 }
 
 export async function getJournalPosts() {
-  return apiCall('/api/journal-posts');
+  return apiCall('/journal-posts');
 }
 
 export async function createJournalPost(data) {
-  return apiCall('/api/journal-posts', {
+  return apiCall('/journal-posts', {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -94,11 +94,11 @@ export async function deleteJournalPost(id) {
 }
 
 export async function getContactMessages() {
-  return apiCall('/api/contact-messages');
+  return apiCall('/contact-messages');
 }
 
 export async function createContactMessage(data) {
-  return apiCall('/api/contact-messages', {
+  return apiCall('/contact-messages', {
     method: 'POST',
     body: JSON.stringify(data),
   });
