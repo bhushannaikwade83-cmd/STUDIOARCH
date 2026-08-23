@@ -1,19 +1,13 @@
-/**
- * StudioArch Backend - Simple Version (no image processing)
- * Direct B2 upload without rotation
- */
-
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import fetch from 'node-fetch';
-import { createHash } from 'crypto';
-import * as db from './db.js';
-
-dotenv.config();
+const express = require('express');
+const cors = require('cors');
+const mysql = require('mysql2/promise');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key_change_this_in_production';
 
 // B2 Configuration
 const B2_KEY_ID = process.env.VITE_B2_KEY_ID;
@@ -21,10 +15,31 @@ const B2_APPLICATION_KEY = process.env.VITE_B2_APPLICATION_KEY;
 const B2_BUCKET_NAME = process.env.VITE_B2_BUCKET_NAME;
 const B2_BUCKET_ID = process.env.VITE_B2_BUCKET_ID;
 
-console.log('\n🚀 StudioArch Backend (Simple)');
+console.log('\n🚀 StudioArch Backend (Node.js)');
+console.log('  Port:', PORT);
 console.log('  B2:', B2_BUCKET_NAME ? '✅' : '❌');
 
+let pool;
 let b2AuthCache = null;
+
+// Database Pool
+async function initDb() {
+  try {
+    pool = mysql.createPool({
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'digitrix_studioarchwebsite',
+      password: process.env.DB_PASSWORD || 'studioarch@70',
+      database: process.env.DB_NAME || 'digitrix_studioarchwebsite',
+      connectionLimit: 10,
+      waitForConnections: true,
+      queueLimit: 0,
+    });
+    console.log('✅ Database connected');
+  } catch (err) {
+    console.error('❌ Database error:', err);
+    process.exit(1);
+  }
+}
 
 // Middleware
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'X-File-Name', 'Authorization'], }));
@@ -38,13 +53,12 @@ const authMiddleware = (req, res, next) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const user = db.verifyToken(token);
-  if (!user) {
-    return res.status(401).json({ error: 'Invalid token' });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch (err) {
+    res.status(401).json({ error: 'Invalid token' });
   }
-
-  req.user = user;
-  next();
 };
 
 // Health
@@ -58,40 +72,29 @@ async function authorizeB2() {
     return b2AuthCache;
   }
 
-  console.log('🔐 [B2 Auth] Starting B2 authorization...');
-  console.log('📋 [B2 Auth] Credentials check:', {
-    hasKeyId: !!B2_KEY_ID,
-    hasAppKey: !!B2_APPLICATION_KEY,
-    keyIdLength: B2_KEY_ID?.length || 0,
-    appKeyLength: B2_APPLICATION_KEY?.length || 0,
-  });
+  try {
+    console.log('🔐 [B2 Auth] Starting B2 authorization...');
+    const basic = Buffer.from(`${B2_KEY_ID}:${B2_APPLICATION_KEY}`).toString('base64');
 
-  const basic = Buffer.from(`${B2_KEY_ID}:${B2_APPLICATION_KEY}`).toString('base64');
-  console.log('🔑 [B2 Auth] Base64 auth prepared, length:', basic.length);
-
-  const res = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
-    method: 'GET',
-    headers: { Authorization: `Basic ${basic}` },
-  });
-
-  console.log('📡 [B2 Auth] Response status:', res.status, res.statusText);
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    console.error('❌ [B2 Auth] Auth failed:', {
-      status: res.status,
-      statusText: res.statusText,
-      errorBody: errorText,
-      timestamp: new Date().toISOString()
+    const res = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
+      method: 'GET',
+      headers: { Authorization: `Basic ${basic}` },
     });
-    throw new Error(`B2 auth failed: ${res.status} ${errorText}`);
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`B2 auth failed: ${res.status} ${errorText}`);
+    }
+
+    const data = await res.json();
+    console.log('✅ [B2 Auth] Success!');
+
+    b2AuthCache = { apiUrl: data.apiUrl, authToken: data.authorizationToken, expiresAt: now + 3600000 };
+    return b2AuthCache;
+  } catch (err) {
+    console.error('❌ [B2 Auth] Error:', err.message);
+    throw err;
   }
-
-  const data = await res.json();
-  console.log('✅ [B2 Auth] Success! Got API URL:', data.apiUrl);
-
-  b2AuthCache = { apiUrl: data.apiUrl, authToken: data.authorizationToken, expiresAt: now + 3600000 };
-  return b2AuthCache;
 }
 
 async function getB2UploadUrl(auth) {
@@ -105,31 +108,17 @@ async function getB2UploadUrl(auth) {
 }
 
 // Upload endpoint
-app.post('/b2-upload', async (req, res) => {
+app.post('/api/b2-upload', async (req, res) => {
   try {
     const fileName = req.headers['x-file-name'] || 'file';
     const fileData = req.body;
 
-    console.log('📤 [Upload] Starting upload:', {
-      fileName,
-      fileSize: fileData?.length || 0,
-      timestamp: new Date().toISOString()
-    });
+    console.log('📤 [Upload] Starting upload:', { fileName });
 
-    // B2 Auth & Upload
-    console.log('🔐 [Upload] Step 1: Authorizing with B2...');
     const auth = await authorizeB2();
-    console.log('✅ [Upload] Step 1 complete: Got auth token');
-
-    console.log('🔗 [Upload] Step 2: Getting upload URL...');
     const urlData = await getB2UploadUrl(auth);
-    console.log('✅ [Upload] Step 2 complete: Got upload URL');
+    const sha1 = crypto.createHash('sha1').update(fileData).digest('hex');
 
-    console.log('📋 [Upload] Step 3: Computing SHA1...');
-    const sha1 = createHash('sha1').update(fileData).digest('hex');
-    console.log('✅ [Upload] Step 3 complete: SHA1 =', sha1);
-
-    console.log('📨 [Upload] Step 4: Uploading to B2...');
     const uploadRes = await fetch(urlData.uploadUrl, {
       method: 'POST',
       headers: {
@@ -141,29 +130,18 @@ app.post('/b2-upload', async (req, res) => {
       body: fileData,
     });
 
-    console.log('📡 [Upload] Response status:', uploadRes.status, uploadRes.statusText);
-
     if (!uploadRes.ok) {
       const errorText = await uploadRes.text();
-      console.error('❌ [Upload] Upload failed:', {
-        status: uploadRes.status,
-        statusText: uploadRes.statusText,
-        errorBody: errorText
-      });
-      throw new Error(`B2 upload failed: ${uploadRes.status} ${errorText}`);
+      throw new Error(`B2 upload failed: ${uploadRes.status}`);
     }
 
     const result = await uploadRes.json();
     const b2Url = `https://f${result.fileId.slice(0, 3)}.backblazeb2.com/file/${B2_BUCKET_NAME}/${result.fileName}`;
 
-    console.log('✅ [Upload] SUCCESS! File URL:', b2Url);
-    res.json({ success: true, url: b2Url });
+    console.log('✅ [Upload] SUCCESS!');
+    res.json({ success: true, url: b2Url, fileId: result.fileId });
   } catch (error) {
-    console.error('❌ [Upload] Error caught:', {
-      message: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
-    });
+    console.error('❌ [Upload] Error:', error.message);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -177,10 +155,22 @@ app.post('/api/auth/login', async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
     }
-    const result = await db.loginUser(email, password);
-    res.json(result);
+
+    const conn = await pool.getConnection();
+    const [rows] = await conn.execute('SELECT * FROM users WHERE email = ?', [email]);
+    conn.release();
+
+    if (rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const user = rows[0];
+    // TODO: Verify password hash
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({ token, user: { id: user.id, email: user.email } });
   } catch (error) {
-    console.error('❌ /api/auth/login error:', error.message);
+    console.error('❌ Login error:', error.message);
     res.status(401).json({ error: error.message });
   }
 });
@@ -190,8 +180,10 @@ app.post('/api/auth/login', async (req, res) => {
 // Projects
 app.get('/api/projects', async (req, res) => {
   try {
-    const projects = await db.getProjects();
-    res.json(projects);
+    const conn = await pool.getConnection();
+    const [rows] = await conn.execute('SELECT * FROM projects ORDER BY created_at DESC');
+    conn.release();
+    res.json(rows);
   } catch (error) {
     console.error('❌ /api/projects error:', error.message);
     res.status(500).json({ error: error.message });
@@ -200,8 +192,14 @@ app.get('/api/projects', async (req, res) => {
 
 app.post('/api/projects', authMiddleware, async (req, res) => {
   try {
-    const project = await db.createProject(req.body);
-    res.json(project);
+    const { title, description, images } = req.body;
+    const conn = await pool.getConnection();
+    const [result] = await conn.execute(
+      'INSERT INTO projects (title, description, images) VALUES (?, ?, ?)',
+      [title, description, JSON.stringify(images)]
+    );
+    conn.release();
+    res.json({ id: result.insertId, title, description });
   } catch (error) {
     console.error('❌ /api/projects POST error:', error.message);
     res.status(500).json({ error: error.message });
@@ -210,7 +208,13 @@ app.post('/api/projects', authMiddleware, async (req, res) => {
 
 app.put('/api/projects/:id', authMiddleware, async (req, res) => {
   try {
-    await db.updateProject(req.params.id, req.body);
+    const { title, description, images } = req.body;
+    const conn = await pool.getConnection();
+    await conn.execute(
+      'UPDATE projects SET title = ?, description = ?, images = ? WHERE id = ?',
+      [title, description, JSON.stringify(images), req.params.id]
+    );
+    conn.release();
     res.json({ success: true });
   } catch (error) {
     console.error('❌ /api/projects PUT error:', error.message);
@@ -220,7 +224,9 @@ app.put('/api/projects/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/projects/:id', authMiddleware, async (req, res) => {
   try {
-    await db.deleteProject(req.params.id);
+    const conn = await pool.getConnection();
+    await conn.execute('DELETE FROM projects WHERE id = ?', [req.params.id]);
+    conn.release();
     res.json({ success: true });
   } catch (error) {
     console.error('❌ /api/projects DELETE error:', error.message);
@@ -231,8 +237,10 @@ app.delete('/api/projects/:id', authMiddleware, async (req, res) => {
 // Event Videos
 app.get('/api/event-videos', async (req, res) => {
   try {
-    const videos = await db.getEventVideos();
-    res.json(videos);
+    const conn = await pool.getConnection();
+    const [rows] = await conn.execute('SELECT * FROM event_videos ORDER BY created_at DESC');
+    conn.release();
+    res.json(rows);
   } catch (error) {
     console.error('❌ /api/event-videos error:', error.message);
     res.status(500).json({ error: error.message });
@@ -241,8 +249,14 @@ app.get('/api/event-videos', async (req, res) => {
 
 app.post('/api/event-videos', authMiddleware, async (req, res) => {
   try {
-    const video = await db.createEventVideo(req.body);
-    res.json(video);
+    const { title, url } = req.body;
+    const conn = await pool.getConnection();
+    const [result] = await conn.execute(
+      'INSERT INTO event_videos (title, url) VALUES (?, ?)',
+      [title, url]
+    );
+    conn.release();
+    res.json({ id: result.insertId, title, url });
   } catch (error) {
     console.error('❌ /api/event-videos POST error:', error.message);
     res.status(500).json({ error: error.message });
@@ -251,7 +265,9 @@ app.post('/api/event-videos', authMiddleware, async (req, res) => {
 
 app.delete('/api/event-videos/:id', authMiddleware, async (req, res) => {
   try {
-    await db.deleteEventVideo(req.params.id);
+    const conn = await pool.getConnection();
+    await conn.execute('DELETE FROM event_videos WHERE id = ?', [req.params.id]);
+    conn.release();
     res.json({ success: true });
   } catch (error) {
     console.error('❌ /api/event-videos DELETE error:', error.message);
@@ -262,8 +278,10 @@ app.delete('/api/event-videos/:id', authMiddleware, async (req, res) => {
 // Journal Posts
 app.get('/api/journal-posts', async (req, res) => {
   try {
-    const posts = await db.getJournalPosts();
-    res.json(posts);
+    const conn = await pool.getConnection();
+    const [rows] = await conn.execute('SELECT * FROM journal_posts ORDER BY created_at DESC');
+    conn.release();
+    res.json(rows);
   } catch (error) {
     console.error('❌ /api/journal-posts error:', error.message);
     res.status(500).json({ error: error.message });
@@ -272,8 +290,14 @@ app.get('/api/journal-posts', async (req, res) => {
 
 app.post('/api/journal-posts', authMiddleware, async (req, res) => {
   try {
-    const post = await db.createJournalPost(req.body);
-    res.json(post);
+    const { title, content } = req.body;
+    const conn = await pool.getConnection();
+    const [result] = await conn.execute(
+      'INSERT INTO journal_posts (title, content) VALUES (?, ?)',
+      [title, content]
+    );
+    conn.release();
+    res.json({ id: result.insertId, title, content });
   } catch (error) {
     console.error('❌ /api/journal-posts POST error:', error.message);
     res.status(500).json({ error: error.message });
@@ -282,7 +306,9 @@ app.post('/api/journal-posts', authMiddleware, async (req, res) => {
 
 app.delete('/api/journal-posts/:id', authMiddleware, async (req, res) => {
   try {
-    await db.deleteJournalPost(req.params.id);
+    const conn = await pool.getConnection();
+    await conn.execute('DELETE FROM journal_posts WHERE id = ?', [req.params.id]);
+    conn.release();
     res.json({ success: true });
   } catch (error) {
     console.error('❌ /api/journal-posts DELETE error:', error.message);
@@ -293,8 +319,10 @@ app.delete('/api/journal-posts/:id', authMiddleware, async (req, res) => {
 // Contact Messages
 app.get('/api/contact-messages', async (req, res) => {
   try {
-    const messages = await db.getContactMessages();
-    res.json(messages);
+    const conn = await pool.getConnection();
+    const [rows] = await conn.execute('SELECT * FROM contact_messages ORDER BY created_at DESC');
+    conn.release();
+    res.json(rows);
   } catch (error) {
     console.error('❌ /api/contact-messages error:', error.message);
     res.status(500).json({ error: error.message });
@@ -303,8 +331,14 @@ app.get('/api/contact-messages', async (req, res) => {
 
 app.post('/api/contact-messages', async (req, res) => {
   try {
-    const message = await db.createContactMessage(req.body);
-    res.json(message);
+    const { name, email, message } = req.body;
+    const conn = await pool.getConnection();
+    const [result] = await conn.execute(
+      'INSERT INTO contact_messages (name, email, message) VALUES (?, ?, ?)',
+      [name, email, message]
+    );
+    conn.release();
+    res.json({ id: result.insertId, name, email, message });
   } catch (error) {
     console.error('❌ /api/contact-messages POST error:', error.message);
     res.status(500).json({ error: error.message });
@@ -313,7 +347,9 @@ app.post('/api/contact-messages', async (req, res) => {
 
 app.delete('/api/contact-messages/:id', authMiddleware, async (req, res) => {
   try {
-    await db.deleteContactMessage(req.params.id);
+    const conn = await pool.getConnection();
+    await conn.execute('DELETE FROM contact_messages WHERE id = ?', [req.params.id]);
+    conn.release();
     res.json({ success: true });
   } catch (error) {
     console.error('❌ /api/contact-messages DELETE error:', error.message);
@@ -322,6 +358,10 @@ app.delete('/api/contact-messages/:id', authMiddleware, async (req, res) => {
 });
 
 // Start
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}\n`);
+initDb().then(() => {
+  app.listen(PORT, () => {
+    console.log(`✅ Server running on port ${PORT}\n`);
+  });
 });
+
+module.exports = app;
