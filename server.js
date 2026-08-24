@@ -44,8 +44,8 @@ async function initDb() {
 }
 
 // Middleware
-app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'X-File-Name', 'Authorization'], }));
-app.use(express.json());
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'X-File-Name', 'X-File-Type', 'Authorization'], }));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.raw({ type: ['image/*', 'video/*', 'application/octet-stream'], limit: '500mb' }));
 
 // Auth Middleware
@@ -111,16 +111,35 @@ async function getB2UploadUrl(auth) {
   return await res.json();
 }
 
-// Local file upload endpoint
+// Local file upload endpoint (Images & Videos up to 500MB)
 app.post('/studioarch/api/upload', async (req, res) => {
   try {
     const fileName = req.headers['x-file-name'] || 'file';
-    const fileType = req.headers['x-file-type'] || 'other'; // 'project', 'video', 'gallery', 'journal'
+    const fileType = req.headers['x-file-type'] || 'other'; // 'projects', 'videos', 'gallery', 'journal'
+    const contentType = req.headers['content-type'] || '';
     const fileData = req.body;
 
-    console.log('📤 [Upload] Starting local upload:', { fileName, fileType });
+    // Validate file size (max 500MB)
+    const maxSize = 500 * 1024 * 1024; // 500MB
+    if (fileData.length > maxSize) {
+      return res.status(413).json({ success: false, error: 'File exceeds 500MB limit' });
+    }
 
-    // Create upload directory (in studioarch parent, not in api folder)
+    // Validate file type
+    const isImage = contentType.startsWith('image/');
+    const isVideo = contentType.startsWith('video/');
+    if (!isImage && !isVideo) {
+      return res.status(400).json({ success: false, error: 'Only images and videos allowed' });
+    }
+
+    console.log('📤 [Upload] Starting upload:', {
+      fileName,
+      fileType,
+      size: `${(fileData.length / (1024 * 1024)).toFixed(2)}MB`,
+      type: isImage ? 'IMAGE' : 'VIDEO'
+    });
+
+    // Create upload directory
     const uploadsRoot = path.join(__dirname, '..', 'uploads', fileType);
     if (!fs.existsSync(uploadsRoot)) {
       fs.mkdirSync(uploadsRoot, { recursive: true });
@@ -139,8 +158,8 @@ app.post('/studioarch/api/upload', async (req, res) => {
     const webUrl = `/studioarch/uploads/${fileType}/${uniqueFileName}`;
     const fullUrl = `https://digitrixmedia.com${webUrl}`;
 
-    console.log('✅ [Upload] SUCCESS!');
-    res.json({ success: true, url: fullUrl, path: webUrl, fileName: uniqueFileName });
+    console.log('✅ [Upload] SUCCESS!', { size: `${(fileData.length / (1024 * 1024)).toFixed(2)}MB`, url: fullUrl });
+    res.json({ success: true, url: fullUrl, path: webUrl, fileName: uniqueFileName, size: fileData.length });
   } catch (error) {
     console.error('❌ [Upload] Error:', error.message);
     res.status(400).json({ success: false, error: error.message });
