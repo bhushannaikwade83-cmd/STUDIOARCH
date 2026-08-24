@@ -2,7 +2,9 @@
 
 import { getToken } from './auth.js';
 
-const API_BASE = 'https://digitrixmedia.com/studioarch/api';
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/studioarch/api`
+  : 'https://digitrixmedia.com/studioarch/api';
 
 export async function apiCall(endpoint, options = {}) {
   const token = getToken();

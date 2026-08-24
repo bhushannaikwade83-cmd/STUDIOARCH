@@ -127,7 +127,10 @@ export function useAdminAuth() {
   return {
     loginWithSupabase: async (email, password) => {
       try {
-        const result = await fetch('https://digitrixmedia.com/studioarch/api/auth/login', {
+        const apiBase = import.meta.env.VITE_API_URL
+          ? `${import.meta.env.VITE_API_URL}/studioarch/api`
+          : 'https://digitrixmedia.com/studioarch/api';
+        const result = await fetch(`${apiBase}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),

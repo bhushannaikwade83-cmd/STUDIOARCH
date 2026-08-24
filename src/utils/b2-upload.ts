@@ -23,8 +23,10 @@ export async function uploadToB2(
 
     if (onProgress) onProgress(10);
 
-    // Use local upload endpoint
-    const apiUrl = 'https://digitrixmedia.com/studioarch/api/upload';
+    // Use local upload endpoint (configurable for dev/prod)
+    const apiUrl = import.meta.env.VITE_API_URL
+      ? `${import.meta.env.VITE_API_URL}/studioarch/api/upload`
+      : 'https://digitrixmedia.com/studioarch/api/upload';
 
     console.log('🔗 [Upload] Using endpoint:', apiUrl);
 
