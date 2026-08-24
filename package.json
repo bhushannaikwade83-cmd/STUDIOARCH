@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:full": "concurrently \"node server.js\" \"vite\"",
-    "dev:server": "node server.js",
+    "dev:full": "concurrently \"node server.cjs\" \"vite\"",
+    "dev:server": "node server.cjs",
     "build": "vite build",
     "preview": "vite preview"
   },
