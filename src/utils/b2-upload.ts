@@ -28,6 +28,9 @@ export async function uploadToB2(
 
     console.log('🔗 [Upload] Using endpoint:', apiUrl);
 
+    // Convert File to ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer();
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -35,7 +38,7 @@ export async function uploadToB2(
         'X-File-Type': fileType,
         'Content-Type': file.type || 'application/octet-stream',
       },
-      body: file,
+      body: arrayBuffer,
     });
 
     console.log('📡 [Upload] Response received:', {
