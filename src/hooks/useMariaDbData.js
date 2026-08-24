@@ -103,6 +103,22 @@ export function useContactInfo() {
   return { contactInfo, refetch: fetchContactInfo };
 }
 
+// Send contact message
+export async function sendContactMessage(name, email, message) {
+  try {
+    console.log('📤 [API] Sending contact message:', { name, email });
+    const result = await apiCall('/contact-messages', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, message }),
+    });
+    console.log('✅ [API] Message sent successfully');
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('❌ [API] Failed to send message:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 // Admin Auth hook
 export function useAdminAuth() {
   return {
