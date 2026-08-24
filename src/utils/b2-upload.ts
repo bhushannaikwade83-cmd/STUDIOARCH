@@ -1,6 +1,6 @@
 /**
  * Local File Upload Utility
- * Uploads files to cPanel server instead of B2
+ * Uploads files to cPanel server with local storage
  */
 
 export async function uploadToB2(

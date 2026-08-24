@@ -11,18 +11,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key_change_this_in_production';
 
-// B2 Configuration
-const B2_KEY_ID = process.env.VITE_B2_KEY_ID;
-const B2_APPLICATION_KEY = process.env.VITE_B2_APPLICATION_KEY;
-const B2_BUCKET_NAME = process.env.VITE_B2_BUCKET_NAME;
-const B2_BUCKET_ID = process.env.VITE_B2_BUCKET_ID;
-
 console.log('\n🚀 StudioArch Backend (Node.js)');
 console.log('  Port:', PORT);
-console.log('  B2:', B2_BUCKET_NAME ? '✅' : '❌');
+console.log('  Storage: Local cPanel 📁');
 
 let pool;
-let b2AuthCache = null;
 
 // Database Pool
 async function initDb() {
@@ -67,49 +60,6 @@ const authMiddleware = (req, res, next) => {
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/studioarch/api/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/studioarch/api/health', (req, res) => res.json({ status: 'ok' }));
-
-// B2 Auth
-async function authorizeB2() {
-  const now = Date.now();
-  if (b2AuthCache && b2AuthCache.expiresAt > now) {
-    console.log('✅ [B2 Auth] Using cached auth token');
-    return b2AuthCache;
-  }
-
-  try {
-    console.log('🔐 [B2 Auth] Starting B2 authorization...');
-    const basic = Buffer.from(`${B2_KEY_ID}:${B2_APPLICATION_KEY}`).toString('base64');
-
-    const res = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
-      method: 'GET',
-      headers: { Authorization: `Basic ${basic}` },
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`B2 auth failed: ${res.status} ${errorText}`);
-    }
-
-    const data = await res.json();
-    console.log('✅ [B2 Auth] Success!');
-
-    b2AuthCache = { apiUrl: data.apiUrl, authToken: data.authorizationToken, expiresAt: now + 3600000 };
-    return b2AuthCache;
-  } catch (err) {
-    console.error('❌ [B2 Auth] Error:', err.message);
-    throw err;
-  }
-}
-
-async function getB2UploadUrl(auth) {
-  const res = await fetch(`${auth.apiUrl}/b2api/v2/b2_get_upload_url`, {
-    method: 'POST',
-    headers: { Authorization: auth.authToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ bucketId: B2_BUCKET_ID }),
-  });
-  if (!res.ok) throw new Error('Failed to get upload URL');
-  return await res.json();
-}
 
 // Local file upload endpoint (Images & Videos up to 500MB)
 app.post('/studioarch/api/upload', async (req, res) => {

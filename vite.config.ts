@@ -35,13 +35,6 @@ export default defineConfig({
     headers: {
       'Cache-Control': 'max-age=0',
     },
-    proxy: {
-      '/api/b2-upload': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-        ws: false,
-      },
-    },
   },
 
   // Optimizations

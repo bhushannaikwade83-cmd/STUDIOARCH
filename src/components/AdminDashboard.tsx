@@ -191,7 +191,7 @@ export function AdminDashboardSection({ stats }: { stats: DashboardStats }) {
           {[
             { label: 'Website Status', status: 'Operational', color: 'green' },
             { label: 'Database', status: 'Connected', color: 'green' },
-            { label: 'B2 Storage', status: 'Active', color: 'green' },
+            { label: 'Local Storage', status: 'Active', color: 'green' },
           ].map((item, idx) => (
             <motion.div
               key={idx}

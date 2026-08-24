@@ -114,7 +114,7 @@ export default function Events() {
                 <h2 className="text-3xl font-light mb-8">Videos</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {videos.filter(v => v.type === 'upload').map((video, idx) => {
-                    // Use URL as-is from database (already contains full B2 URL or proxy path)
+                    // Use URL from database (local cPanel server URL)
                     const videoUrl = video.url;
 
                     console.log(`🎬 Video ${idx}: "${video.title}"`);

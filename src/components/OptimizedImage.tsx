@@ -14,7 +14,6 @@ interface OptimizedImageProps {
  * Optimized image component with lazy loading and blur-up effect
  * - Lazy loads by default unless priority is set
  * - Shows blur while loading
- * - Optimizes B2 URLs with size hints
  */
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   src,
@@ -27,9 +26,6 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  // Optimize B2 URLs
-  const optimizedSrc = src;
-
   return (
     <div className="relative overflow-hidden">
       {/* Placeholder/Blur background */}
@@ -39,7 +35,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
       {/* Actual Image */}
       <motion.img
-        src={optimizedSrc}
+        src={src}
         alt={alt}
         className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
         loading={priority ? 'eager' : 'lazy'}

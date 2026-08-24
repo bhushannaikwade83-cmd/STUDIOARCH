@@ -357,7 +357,7 @@ export default function Admin() {
       return;
     }
 
-    // File-based image - Compress with high quality (92%) to B2
+    // File-based image - Compress with high quality (92%) for upload
     if (newImageFile) {
       try {
         setImageCompressing(true);
@@ -367,7 +367,7 @@ export default function Admin() {
           setImageCompressProgress(progress);
         });
 
-        // Upload compressed high-quality image to B2
+        // Upload compressed high-quality image
         const uploadResult = await uploadToB2(compressedFile, `images/${Date.now()}_${compressedFile.name}`, (progress) => {
           setImageCompressProgress(progress);
         });
@@ -598,12 +598,12 @@ export default function Admin() {
       const isVideo = file.type.startsWith('video/');
 
       if (isVideo) {
-        // Upload videos to B2 (handles large files, no delay)
+        // Upload videos (handles large files, no delay)
         uploadToB2(file, `projects/${Date.now()}_${file.name}`, (progress) => {
           console.log(`Uploading ${file.name}: ${progress}%`);
         }).then((result) => {
           if (result.success) {
-            console.log(`✅ Video uploaded to B2: ${result.url}`);
+            console.log(`✅ Video uploaded: ${result.url}`);
             setEditingProjectImages(prev => [...prev, result.url]);
             processedCount++;
 
@@ -614,7 +614,7 @@ export default function Admin() {
             }
           }
         }).catch((error) => {
-          console.error('B2 upload error:', error);
+          console.error('Upload error:', error);
           processedCount++;
           if (processedCount === filesToAdd.length) {
             setIsUploadingEdit(false);
@@ -845,12 +845,12 @@ export default function Admin() {
 
       try {
         if (isVideo) {
-          // Upload videos to B2 (handles large files, no delay)
+          // Upload videos (handles large files, no delay)
           uploadToB2(file, `projects/${Date.now()}_${file.name}`, (progress) => {
             console.log(`Uploading ${file.name}: ${progress}%`);
           }).then((result) => {
             if (result.success) {
-              console.log(`✅ Video uploaded to B2: ${result.url}`);
+              console.log(`✅ Video uploaded: ${result.url}`);
               setNewProjectImages(prev => [...prev, result.url]);
               processedCount++;
 
@@ -862,7 +862,7 @@ export default function Admin() {
               }
             }
           }).catch((error) => {
-            console.error('B2 upload error:', error);
+            console.error('Upload error:', error);
             processedCount++;
             if (processedCount === filesToAdd.length) {
               setIsUploadingProject(false);
@@ -922,7 +922,7 @@ export default function Admin() {
       const isVideo = file.type.startsWith('video/');
 
       if (isVideo) {
-        // Upload video to B2
+        // Upload video
         uploadToB2(file, `projects/${Date.now()}_${file.name}`, (progress) => {
           console.log(`Uploading ${file.name}: ${progress}%`);
         }).then((result) => {

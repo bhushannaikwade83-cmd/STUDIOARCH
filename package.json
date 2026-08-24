@@ -7,7 +7,6 @@
     "dev": "vite",
     "dev:full": "concurrently \"node server.js\" \"vite\"",
     "dev:server": "node server.js",
-    "dev:b2": "concurrently \"node server.js\" \"vite\"",
     "build": "vite build",
     "preview": "vite preview"
   },
