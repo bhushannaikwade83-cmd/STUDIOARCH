@@ -73,6 +73,36 @@ export function useContentSettings() {
   return { settings: data || {}, loading, error };
 }
 
+// Contact Info hook
+export function useContactInfo() {
+  const [contactInfo, setContactInfo] = useState({
+    email: 'inquiry@1studioarch.com',
+    phone: '+44 (0) 20 1234 5678',
+    locations: 'London, UK\nNew York, USA\nSingapore, SG',
+    instagram: '#',
+    linkedin: '#',
+    youtube: '#',
+  });
+
+  const fetchContactInfo = useCallback(async () => {
+    try {
+      console.log('📥 [API] Fetching contact info');
+      const result = await apiCall('/contact-info');
+      if (result && result.length > 0) {
+        setContactInfo(result[0]);
+      }
+    } catch (err) {
+      console.error('⚠️ [API] Using default contact info:', err.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchContactInfo();
+  }, [fetchContactInfo]);
+
+  return { contactInfo, refetch: fetchContactInfo };
+}
+
 // Admin Auth hook
 export function useAdminAuth() {
   return {
