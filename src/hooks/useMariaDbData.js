@@ -7,6 +7,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiCall } from '../utils/api';
 import { getToken } from '../utils/auth';
 
+// Alias for backwards compatibility
+export const useSupabaseTable = useMariaDbTable;
+
 // Generic hook to fetch data from MariaDB API
 export function useMariaDbTable(endpoint, options = {}) {
   const [data, setData] = useState([]);
