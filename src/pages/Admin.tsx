@@ -5,7 +5,7 @@ import { LogOut, Menu, X, Home, Settings, Edit2, Image, FileText, ArrowLeft, You
 import { compressImage, compressVideo, formatFileSize, shouldCompress } from '../utils/compression';
 import { uploadToB2 } from '../utils/b2-upload';
 import { login, logout as logoutAuth, isAuthenticated as checkAuth } from '../utils/auth';
-import { useProjects, useSupabaseMutation, useJournalPosts, useContactMessages, useGallery, useEventVideos, useContentSettings } from '../hooks/useSupabaseData';
+import { useProjects, useSupabaseMutation, useJournalPosts, useContactMessages, useGallery, useEventVideos, useContentSettings } from '../hooks/useMariaDbData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
