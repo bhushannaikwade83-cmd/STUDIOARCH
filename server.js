@@ -380,6 +380,105 @@ app.delete('/studioarch/api/contact-messages/:id', authMiddleware, async (req, r
   }
 });
 
+// Gallery Items
+app.get('/studioarch/api/gallery-items', async (req, res) => {
+  try {
+    const conn = await pool.getConnection();
+    const [rows] = await conn.execute('SELECT * FROM gallery_items ORDER BY created_at DESC');
+    conn.release();
+    res.json(rows);
+  } catch (error) {
+    console.error('❌ /api/gallery-items error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/studioarch/api/gallery-items', authMiddleware, async (req, res) => {
+  try {
+    const { folder_name, image_url, title } = req.body;
+    const conn = await pool.getConnection();
+    const [result] = await conn.execute(
+      'INSERT INTO gallery_items (folder_name, image_url, title) VALUES (?, ?, ?)',
+      [folder_name, image_url, title]
+    );
+    conn.release();
+    res.json({ id: result.insertId, folder_name, image_url, title });
+  } catch (error) {
+    console.error('❌ /api/gallery-items POST error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/studioarch/api/gallery-items/:id', authMiddleware, async (req, res) => {
+  try {
+    const conn = await pool.getConnection();
+    await conn.execute('DELETE FROM gallery_items WHERE id = ?', [req.params.id]);
+    conn.release();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ /api/gallery-items DELETE error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Content Settings
+app.get('/studioarch/api/content-settings', async (req, res) => {
+  try {
+    const conn = await pool.getConnection();
+    const [rows] = await conn.execute('SELECT * FROM content_settings');
+    conn.release();
+    res.json(rows);
+  } catch (error) {
+    console.error('❌ /api/content-settings error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/studioarch/api/content-settings', authMiddleware, async (req, res) => {
+  try {
+    const { key_name, value } = req.body;
+    const conn = await pool.getConnection();
+    await conn.execute(
+      'INSERT INTO content_settings (key_name, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)',
+      [key_name, value]
+    );
+    conn.release();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ /api/content-settings POST error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Contact Info
+app.get('/studioarch/api/contact-info', async (req, res) => {
+  try {
+    const conn = await pool.getConnection();
+    const [rows] = await conn.execute('SELECT * FROM contact_info LIMIT 1');
+    conn.release();
+    res.json(rows);
+  } catch (error) {
+    console.error('❌ /api/contact-info error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/studioarch/api/contact-info', authMiddleware, async (req, res) => {
+  try {
+    const { email, phone, locations, instagram, linkedin, youtube, locationmapurl } = req.body;
+    const conn = await pool.getConnection();
+    await conn.execute(
+      'INSERT INTO contact_info (email, phone, locations, instagram, linkedin, youtube, locationmapurl) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE email = VALUES(email)',
+      [email, phone, locations, instagram, linkedin, youtube, locationmapurl]
+    );
+    conn.release();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ /api/contact-info POST error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start
 initDb().then(() => {
   app.listen(PORT, () => {
