@@ -120,17 +120,17 @@ app.post('/studioarch/api/upload', async (req, res) => {
 
     console.log('📤 [Upload] Starting local upload:', { fileName, fileType });
 
-    // Create upload directory if not exists
-    const uploadDir = path.join(__dirname, 'uploads', fileType);
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    // Create upload directory (in studioarch parent, not in api folder)
+    const uploadsRoot = path.join(__dirname, '..', 'uploads', fileType);
+    if (!fs.existsSync(uploadsRoot)) {
+      fs.mkdirSync(uploadsRoot, { recursive: true });
     }
 
     // Generate unique filename
     const timestamp = Date.now();
     const safeName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
     const uniqueFileName = `${timestamp}-${safeName}`;
-    const filePath = path.join(uploadDir, uniqueFileName);
+    const filePath = path.join(uploadsRoot, uniqueFileName);
 
     // Save file
     fs.writeFileSync(filePath, fileData);
@@ -147,8 +147,8 @@ app.post('/studioarch/api/upload', async (req, res) => {
   }
 });
 
-// Serve uploaded files statically
-app.use('/studioarch/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve uploaded files statically (from studioarch root)
+app.use('/studioarch/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // ===== AUTH ENDPOINTS =====
 
