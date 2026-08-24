@@ -3,6 +3,8 @@ const cors = require('cors');
 const mysql = require('mysql2/promise');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -109,44 +111,44 @@ async function getB2UploadUrl(auth) {
   return await res.json();
 }
 
-// Upload endpoint
-app.post('/studioarch/api/b2-upload', async (req, res) => {
+// Local file upload endpoint
+app.post('/studioarch/api/upload', async (req, res) => {
   try {
     const fileName = req.headers['x-file-name'] || 'file';
+    const fileType = req.headers['x-file-type'] || 'other'; // 'project', 'video', 'gallery', 'journal'
     const fileData = req.body;
 
-    console.log('📤 [Upload] Starting upload:', { fileName });
+    console.log('📤 [Upload] Starting local upload:', { fileName, fileType });
 
-    const auth = await authorizeB2();
-    const urlData = await getB2UploadUrl(auth);
-    const sha1 = crypto.createHash('sha1').update(fileData).digest('hex');
-
-    const uploadRes = await fetch(urlData.uploadUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: urlData.authorizationToken,
-        'X-Bz-File-Name': encodeURIComponent(fileName),
-        'Content-Type': 'application/octet-stream',
-        'X-Bz-Content-Sha1': sha1,
-      },
-      body: fileData,
-    });
-
-    if (!uploadRes.ok) {
-      const errorText = await uploadRes.text();
-      throw new Error(`B2 upload failed: ${uploadRes.status}`);
+    // Create upload directory if not exists
+    const uploadDir = path.join(__dirname, 'uploads', fileType);
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    const result = await uploadRes.json();
-    const b2Url = `https://f${result.fileId.slice(0, 3)}.backblazeb2.com/file/${B2_BUCKET_NAME}/${result.fileName}`;
+    // Generate unique filename
+    const timestamp = Date.now();
+    const safeName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const uniqueFileName = `${timestamp}-${safeName}`;
+    const filePath = path.join(uploadDir, uniqueFileName);
+
+    // Save file
+    fs.writeFileSync(filePath, fileData);
+
+    // Return web-accessible URL
+    const webUrl = `/studioarch/uploads/${fileType}/${uniqueFileName}`;
+    const fullUrl = `https://digitrixmedia.com${webUrl}`;
 
     console.log('✅ [Upload] SUCCESS!');
-    res.json({ success: true, url: b2Url, fileId: result.fileId });
+    res.json({ success: true, url: fullUrl, path: webUrl, fileName: uniqueFileName });
   } catch (error) {
     console.error('❌ [Upload] Error:', error.message);
     res.status(400).json({ success: false, error: error.message });
   }
 });
+
+// Serve uploaded files statically
+app.use('/studioarch/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ===== AUTH ENDPOINTS =====
 

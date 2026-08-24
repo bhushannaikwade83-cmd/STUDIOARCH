@@ -1,48 +1,46 @@
 /**
- * B2 Storage Upload Utility
- * Works with local Node.js server or production API
+ * Local File Upload Utility
+ * Uploads files to cPanel server instead of B2
  */
 
 export async function uploadToB2(
   file: File,
   fileName: string,
+  fileType: string = 'other',
   onProgress?: (progress: number) => void
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
     const sanitizedFileName = fileName.replace(/\s+/g, '_');
 
-    console.log('🚀 [B2 Upload] Starting upload:', {
+    console.log('🚀 [Upload] Starting local upload:', {
       originalName: fileName,
       sanitizedName: sanitizedFileName,
       fileSize: file.size,
       fileType: file.type,
+      category: fileType,
       timestamp: new Date().toISOString()
     });
 
     if (onProgress) onProgress(10);
 
-    // Use digitrixmedia backend endpoint
-    const apiUrl = 'https://digitrixmedia.com/studioarch/api/b2-upload';
+    // Use local upload endpoint
+    const apiUrl = 'https://digitrixmedia.com/studioarch/api/upload';
 
-    console.log('🔗 [B2 Upload] Using endpoint:', apiUrl);
-    console.log('📋 [B2 Upload] Request headers:', {
-      'X-File-Name': sanitizedFileName,
-      'Content-Type': file.type || 'application/octet-stream',
-    });
+    console.log('🔗 [Upload] Using endpoint:', apiUrl);
 
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'X-File-Name': sanitizedFileName,
+        'X-File-Type': fileType,
         'Content-Type': file.type || 'application/octet-stream',
       },
       body: file,
     });
 
-    console.log('📡 [B2 Upload] Response received:', {
+    console.log('📡 [Upload] Response received:', {
       status: response.status,
       statusText: response.statusText,
-      contentType: response.headers.get('content-type'),
       timestamp: new Date().toISOString()
     });
 
@@ -50,7 +48,7 @@ export async function uploadToB2(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('❌ [B2 Upload] Server error:', {
+      console.error('❌ [Upload] Server error:', {
         status: response.status,
         errorData,
         timestamp: new Date().toISOString()
@@ -60,15 +58,15 @@ export async function uploadToB2(
 
     const data = await response.json();
 
-    console.log('✅ [B2 Upload] Response data:', {
+    console.log('✅ [Upload] Response data:', {
       url: data.url,
-      fileId: data.fileId,
+      fileName: data.fileName,
       timestamp: new Date().toISOString()
     });
 
     if (onProgress) onProgress(100);
 
-    console.log('✅ [B2 Upload] Upload successful!');
+    console.log('✅ [Upload] Upload successful!');
 
     return {
       success: true,
@@ -76,7 +74,7 @@ export async function uploadToB2(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('❌ [B2 Upload] Upload failed:', {
+    console.error('❌ [Upload] Upload failed:', {
       error: errorMessage,
       fullError: error,
       timestamp: new Date().toISOString()
