@@ -3,7 +3,7 @@ import { ArrowLeft, Instagram, Linkedin, Youtube } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import NavMenu from '../components/NavMenu';
-import { useSupabaseTable, sendContactMessage } from '../hooks/useSupabaseData';
+import { useSupabaseTable, sendContactMessage } from '../hooks/useMariaDbData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 
 const DEFAULT_CONTACT = {

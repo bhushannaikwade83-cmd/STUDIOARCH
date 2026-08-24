@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Youtube } from 'lucide-react';
 import NavMenu from '../components/NavMenu';
-import { useEventVideos } from '../hooks/useSupabaseData';
+import { useEventVideos } from '../hooks/useMariaDbData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 
 export default function Events() {

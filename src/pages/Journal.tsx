@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import NavMenu from '../components/NavMenu';
-import { useJournalPosts } from '../hooks/useSupabaseData';
+import { useJournalPosts } from '../hooks/useMariaDbData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 
 const DEFAULT_ARTICLES = [

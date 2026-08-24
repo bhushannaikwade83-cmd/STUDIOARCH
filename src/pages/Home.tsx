@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import { Mail, Instagram, Linkedin, MapPin, Phone } from 'lucide-react';
 import { PROJECTS } from './Projects';
-import { useProjects, useGallery, useContactInfo } from '../hooks/useSupabaseData';
+import { useProjects, useGallery, useContactInfo } from '../hooks/useMariaDbData';
 
 // Book-opening transition variants
 const transitionVariants = [
