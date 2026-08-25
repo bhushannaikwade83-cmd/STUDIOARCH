@@ -1291,21 +1291,31 @@ export default function Admin() {
                     {/* Project Images/Videos */}
                     <div>
                       <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Project Images/Videos ({newProjectImages.length}/20)</label>
-                      <div className="space-y-2 mb-3">
-                        {newProjectImages.map((img, idx) => (
-                          <div key={idx} className="flex items-center gap-2 bg-white/5 p-2 rounded border border-white/10">
-                            <span className="text-xs text-stone-400 flex-1 truncate">{img}</span>
-                            <motion.button
-                              whileHover={{ scale: 1.1 }}
-                              type="button"
-                              onClick={() => setNewProjectImages(prev => prev.filter((_, i) => i !== idx))}
-                              className="p-1 bg-red-500/20 border border-red-500/40 rounded hover:bg-red-500/30"
-                            >
-                              <Trash2 size={12} className="text-red-400" />
-                            </motion.button>
-                          </div>
-                        ))}
-                      </div>
+                      {newProjectImages.length > 0 && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                          {newProjectImages.map((img, idx) => (
+                            <div key={idx} className="relative group">
+                              <div className="bg-white/10 rounded overflow-hidden aspect-square flex items-center justify-center">
+                                {img.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                  <img src={img} alt="preview" className="w-full h-full object-cover" />
+                                ) : img.match(/\.(mp4|webm|mov|avi|mkv)$/i) ? (
+                                  <div className="flex flex-col items-center gap-2 text-stone-400"><FileText size={24} /> Video</div>
+                                ) : (
+                                  <div className="text-xs text-stone-500 text-center px-2 break-all">{img.slice(-30)}</div>
+                                )}
+                              </div>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                type="button"
+                                onClick={() => setNewProjectImages(prev => prev.filter((_, i) => i !== idx))}
+                                className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X size={12} className="text-white" />
+                              </motion.button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {newProjectImages.length < 20 && (
                         <div className="space-y-2">
                           <input
