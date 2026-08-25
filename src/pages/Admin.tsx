@@ -3,8 +3,52 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogOut, Menu, X, Home, Settings, Edit2, Image, FileText, ArrowLeft, Youtube, Trash2, Plus, Mail, Check, Download, Zap } from 'lucide-react';
 import { compressImage, compressVideo, formatFileSize, shouldCompress } from '../utils/compression';
-import { uploadToB2 } from '../utils/b2-upload';
 import { login, logout as logoutAuth, isAuthenticated as checkAuth } from '../utils/auth';
+
+// Backend upload function
+const uploadToBackend = async (file: File, fileType: string, onProgress?: (progress: number) => void) => {
+  try {
+    console.log('[Upload] Starting upload for file:', file.name, 'Type:', fileType, 'Size:', file.size);
+    const arrayBuffer = await file.arrayBuffer();
+    console.log('[Upload] ArrayBuffer ready, size:', arrayBuffer.byteLength);
+    onProgress?.(50);
+
+    console.log('[Upload] Sending to: https://digitrixmedia.com/studioarch/api/upload');
+    const safeName = file.name.replace(/[^\w.-]/g, '_');
+    const response = await fetch('https://digitrixmedia.com/studioarch/api/upload', {
+      method: 'POST',
+      headers: {
+        'X-File-Name': safeName,
+        'X-File-Type': fileType,
+        'Content-Type': file.type,
+      },
+      body: arrayBuffer,
+    });
+
+    console.log('[Upload] Response received. Status:', response.status, response.statusText);
+    onProgress?.(100);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Upload] HTTP Error:', response.status, errorText);
+      return { success: false, error: `Upload failed: ${response.statusText} - ${errorText}` };
+    }
+
+    const data = await response.json();
+    console.log('[Upload] Response data:', data);
+
+    if (data.success) {
+      console.log('[Upload] SUCCESS! URL:', data.url);
+      return { success: true, url: data.url };
+    } else {
+      console.error('[Upload] Server error:', data.error);
+      return { success: false, error: data.error };
+    }
+  } catch (error) {
+    console.error('[Upload] Exception:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Upload failed' };
+  }
+};
 import { useProjects, useSupabaseMutation, useJournalPosts, useContactMessages, useGallery, useEventVideos, useContentSettings } from '../hooks/useMariaDbData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
@@ -220,9 +264,8 @@ export default function Admin() {
         setVideoCompressing(true);
         setVideoCompressProgress(0);
 
-        // Upload video file directly without compression
-        // Videos should be uploaded as original file, not compressed to image
-        const uploadResult = await uploadToB2(newVideoFile, `videos/${Date.now()}_${newVideoFile.name}`, (progress) => {
+        // Upload video to backend
+        const uploadResult = await uploadToBackend(newVideoFile, 'videos', (progress) => {
           setVideoCompressProgress(progress);
         });
 
@@ -367,8 +410,8 @@ export default function Admin() {
           setImageCompressProgress(progress);
         });
 
-        // Upload compressed high-quality image
-        const uploadResult = await uploadToB2(compressedFile, `images/${Date.now()}_${compressedFile.name}`, (progress) => {
+        // Upload to backend
+        const uploadResult = await uploadToBackend(compressedFile, 'gallery', (progress) => {
           setImageCompressProgress(progress);
         });
 
@@ -531,6 +574,7 @@ export default function Admin() {
       year: editProjectData.year,
       category: editProjectData.category,
       description: editProjectData.description,
+      images: editingProjectImages.length > 0 ? editingProjectImages : null,
     });
     if (result.success) {
       setEditingProjectId(null);
@@ -566,14 +610,15 @@ export default function Admin() {
     if (!newProjectImageUrl.trim() && !newProjectImageFile) { return; }
 
     if (newProjectImageFile) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        setEditingProjectImages(prev => [...prev, dataUrl]);
+      uploadToBackend(newProjectImageFile, 'projects', (progress) => {
+        console.log(`Uploading ${newProjectImageFile.name}: ${progress}%`);
+      }).then((result) => {
+        if (result.success) {
+          setEditingProjectImages(prev => [...prev, result.url]);
+        }
         setNewProjectImageUrl('');
         setNewProjectImageFile(null);
-      };
-      reader.readAsDataURL(newProjectImageFile);
+      });
     } else {
       setEditingProjectImages(prev => [...prev, newProjectImageUrl.trim()]);
       setNewProjectImageUrl('');
@@ -599,7 +644,7 @@ export default function Admin() {
 
       if (isVideo) {
         // Upload videos (handles large files, no delay)
-        uploadToB2(file, `projects/${Date.now()}_${file.name}`, (progress) => {
+        uploadToBackend(file, 'projects', (progress) => {
           console.log(`Uploading ${file.name}: ${progress}%`);
         }).then((result) => {
           if (result.success) {
@@ -621,32 +666,13 @@ export default function Admin() {
           }
         });
       } else {
-        // Images: Compress if needed, then convert to base64
-        if (shouldCompress(file)) {
-          showSuccessNotification(`📦 Compressing ${file.name}...`);
-          compressImage(file, (progress) => {
-            console.log(`Compressing: ${progress}%`);
-          }).then((compressedFile) => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              const dataUrl = event.target?.result as string;
-              setEditingProjectImages(prev => [...prev, dataUrl]);
-              processedCount++;
-
-              if (processedCount === filesToAdd.length) {
-                showSuccessNotification(`✅ Added ${filesToAdd.length} file(s)`);
-                setNewProjectImageFile(null);
-                setIsUploadingEdit(false);
-              }
-            };
-            reader.readAsDataURL(compressedFile);
-          });
-        } else {
-          // No compression needed - convert directly to base64
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            const dataUrl = event.target?.result as string;
-            setEditingProjectImages(prev => [...prev, dataUrl]);
+        // Images: Upload to backend
+        uploadToBackend(file, 'projects', (progress) => {
+          console.log(`Uploading ${file.name}: ${progress}%`);
+        }).then((result) => {
+          if (result.success) {
+            console.log(`✅ Image uploaded: ${result.url}`);
+            setEditingProjectImages(prev => [...prev, result.url]);
             processedCount++;
 
             if (processedCount === filesToAdd.length) {
@@ -654,9 +680,20 @@ export default function Admin() {
               setNewProjectImageFile(null);
               setIsUploadingEdit(false);
             }
-          };
-          reader.readAsDataURL(file);
-        }
+          } else {
+            console.error('Upload failed:', result.error);
+            processedCount++;
+            if (processedCount === filesToAdd.length) {
+              setIsUploadingEdit(false);
+            }
+          }
+        }).catch((error) => {
+          console.error('Upload error:', error);
+          processedCount++;
+          if (processedCount === filesToAdd.length) {
+            setIsUploadingEdit(false);
+          }
+        });
       }
     });
   };
@@ -695,7 +732,7 @@ export default function Admin() {
       year: newProjectData.year || new Date().getFullYear().toString(),
       category: newProjectData.category?.trim() || '',
       description: newProjectData.description?.trim() || '',
-      images: newProjectImages.length > 0 ? newProjectImages : ['/architecture-1.jpg'],
+      images: newProjectImages.length > 0 ? newProjectImages : null,
     };
 
     console.log('📤 Sending to Supabase:', {
@@ -846,7 +883,7 @@ export default function Admin() {
       try {
         if (isVideo) {
           // Upload videos (handles large files, no delay)
-          uploadToB2(file, `projects/${Date.now()}_${file.name}`, (progress) => {
+          uploadToBackend(file, 'projects', (progress) => {
             console.log(`Uploading ${file.name}: ${progress}%`);
           }).then((result) => {
             if (result.success) {
@@ -869,30 +906,36 @@ export default function Admin() {
             }
           });
         } else {
-          // Images: Compress if needed, then convert to base64
-          let fileToUpload = file;
-          if (shouldCompress(file)) {
-            showSuccessNotification(`📦 Compressing ${file.name}...`);
-            fileToUpload = (await compressImage(file, (progress) => {
-              console.log(`Compressing: ${progress}%`);
-            })) as File;
-          }
+          // Images: Upload to backend
+          uploadToBackend(file, 'projects', (progress) => {
+            console.log(`Uploading ${file.name}: ${progress}%`);
+          }).then((result) => {
+            if (result.success) {
+              console.log(`✅ Image uploaded: ${result.url}`);
+              setNewProjectImages(prev => [...prev, result.url]);
+              processedCount++;
 
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            const dataUrl = event.target?.result as string;
-            console.log(`✅ Image stored as base64`);
-            setNewProjectImages(prev => [...prev, dataUrl]);
+              if (processedCount === filesToAdd.length) {
+                showSuccessNotification(`✅ All files uploaded successfully!`);
+                setSelectedProjectFiles(null);
+                setFilesReadyToCreate(false);
+                setIsUploadingProject(false);
+              }
+            } else {
+              showSuccessNotification(`Failed to upload ${file.name}`);
+              processedCount++;
+              if (processedCount === filesToAdd.length) {
+                setIsUploadingProject(false);
+              }
+            }
+          }).catch((error) => {
+            console.error('Upload error:', error);
+            showSuccessNotification(`Error uploading ${file.name}`);
             processedCount++;
-
             if (processedCount === filesToAdd.length) {
-              showSuccessNotification(`✅ All files uploaded successfully!`);
-              setSelectedProjectFiles(null);
-              setFilesReadyToCreate(false);
               setIsUploadingProject(false);
             }
-          };
-          reader.readAsDataURL(fileToUpload);
+          });
         }
       } catch (error) {
         console.error('File processing error:', error);
@@ -923,7 +966,7 @@ export default function Admin() {
 
       if (isVideo) {
         // Upload video
-        uploadToB2(file, `projects/${Date.now()}_${file.name}`, (progress) => {
+        uploadToBackend(file, 'projects', (progress) => {
           console.log(`Uploading ${file.name}: ${progress}%`);
         }).then((result) => {
           if (result.success) {
@@ -1245,24 +1288,17 @@ export default function Admin() {
                       />
                     </div>
 
-                    {/* Project Images */}
+                    {/* Project Images/Videos */}
                     <div>
                       <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Project Images/Videos ({newProjectImages.length}/20)</label>
                       <div className="space-y-2 mb-3">
                         {newProjectImages.map((img, idx) => (
                           <div key={idx} className="flex items-center gap-2 bg-white/5 p-2 rounded border border-white/10">
-                            {isVideoUrl(img) ? (
-                              <div className="w-12 h-12 rounded bg-black/50 flex items-center justify-center flex-shrink-0">
-                                <span className="text-lg">🎬</span>
-                              </div>
-                            ) : (
-                              <img src={img} alt={`Project ${idx + 1}`} className="w-12 h-12 object-cover rounded" />
-                            )}
-                            <span className="text-xs text-stone-400 flex-1 truncate">{img.substring(0, 40)}...</span>
+                            <span className="text-xs text-stone-400 flex-1 truncate">{img}</span>
                             <motion.button
                               whileHover={{ scale: 1.1 }}
                               type="button"
-                              onClick={() => handleRemoveNewProjectImage(idx)}
+                              onClick={() => setNewProjectImages(prev => prev.filter((_, i) => i !== idx))}
                               className="p-1 bg-red-500/20 border border-red-500/40 rounded hover:bg-red-500/30"
                             >
                               <Trash2 size={12} className="text-red-400" />
@@ -1272,13 +1308,6 @@ export default function Admin() {
                       </div>
                       {newProjectImages.length < 20 && (
                         <div className="space-y-2">
-                          <input
-                            type="text"
-                            value={newProjectImageUrl}
-                            onChange={e => setNewProjectImageUrl(e.target.value)}
-                            placeholder="Image URL or upload file"
-                            className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm placeholder-stone-500 focus:outline-none focus:border-white/40"
-                          />
                           <input
                             type="file"
                             multiple
@@ -1304,6 +1333,7 @@ export default function Admin() {
                         </div>
                       )}
                     </div>
+
                   </div>
 
                   {selectedProjectFiles && !filesReadyToCreate && (

@@ -3,7 +3,7 @@
  * Replaces Supabase hooks with API-based data fetching from MariaDB
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiCall } from '../utils/api';
 import { getToken } from '../utils/auth';
 
@@ -46,7 +46,24 @@ export function useMariaDbTable(endpoint, options = {}) {
 
 // Projects hook
 export function useProjects() {
-  return useMariaDbTable('/projects');
+  const { data, loading, error, refetch } = useMariaDbTable('/projects');
+
+  // Parse images JSON field
+  const parsedData = useMemo(() => {
+    return data.map(project => {
+      try {
+        const images = project.images
+          ? (typeof project.images === 'string' ? JSON.parse(project.images) : project.images)
+          : null;
+        return { ...project, images };
+      } catch (e) {
+        console.warn(`Failed to parse images for project ${project.id}:`, e);
+        return { ...project, images: null };
+      }
+    });
+  }, [data]);
+
+  return { data: parsedData, loading, error, refetch };
 }
 
 // Event Videos hook
