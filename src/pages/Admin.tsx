@@ -826,8 +826,7 @@ export default function Admin() {
     }
 
     setSelectedProjectFiles(files);
-    setFilesReadyToCreate(true);
-    showSuccessNotification(`📁 ${files.length} file(s) selected. Click "Upload Files" to proceed.`);
+    showSuccessNotification(`✅ ${files.length} file(s) ready. Click "Create Project" to upload and save.`);
   };
 
   const handleSelectEditFiles = (files: FileList | null) => {
@@ -840,8 +839,7 @@ export default function Admin() {
     }
 
     setSelectedEditFiles(files);
-    setFilesReadyToUpdate(true);
-    showSuccessNotification(`📁 ${files.length} file(s) selected. Click "Upload Files" to proceed.`);
+    showSuccessNotification(`✅ ${files.length} file(s) ready. Click "Save" to upload and update.`);
   };
 
   const handleUploadEditFiles = async () => {
@@ -1362,48 +1360,23 @@ export default function Admin() {
                             onChange={e => handleSelectProjectFiles(e.target.files)}
                             className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-stone-400 text-sm file:bg-white file:text-black file:px-2 file:py-1 file:border-0 file:rounded file:text-xs file:cursor-pointer file:mr-2 hover:file:bg-stone-200"
                           />
-                          {selectedProjectFiles && (
-                            <motion.button
-                              type="button"
-                              onClick={handleUploadProjectFiles}
-                              disabled={isUploadingProject}
-                              whileHover={isUploadingProject ? {} : { scale: 1.02 }}
-                              className={`w-full px-3 py-2 rounded text-xs uppercase tracking-widest flex items-center justify-center gap-2 ${
-                                isUploadingProject
-                                  ? 'bg-blue-400/20 border border-blue-400/40 text-blue-300 cursor-wait'
-                                  : 'bg-blue-500/20 border border-blue-500/40 text-blue-300 hover:bg-blue-500/30'
-                              }`}
-                            >
-                              {isUploadingProject ? '⏳ Uploading...' : '📤 Upload Files'}
-                            </motion.button>
-                          )}
                         </div>
                       )}
                     </div>
 
                   </div>
 
-                  {selectedProjectFiles && !filesReadyToCreate && (
-                    <div className="w-full px-6 py-3 rounded bg-red-500/20 border border-red-500/40 text-red-300 text-sm font-light uppercase tracking-widest text-center">
-                      ❌ Please upload files first by clicking "Upload Files" button
-                    </div>
-                  )}
-                  {isUploadingProject && (
-                    <div className="w-full px-6 py-3 rounded bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-sm font-light uppercase tracking-widest text-center">
-                      ⏳ Uploading files... Complete uploads before creating project
-                    </div>
-                  )}
                   <motion.button
                     type="submit"
-                    disabled={isUploadingProject || (selectedProjectFiles && !filesReadyToCreate)}
-                    whileHover={(isUploadingProject || (selectedProjectFiles && !filesReadyToCreate)) ? {} : { scale: 1.02 }}
+                    disabled={isUploadingProject}
+                    whileHover={isUploadingProject ? {} : { scale: 1.02 }}
                     className={`w-full px-6 py-3 rounded font-light uppercase tracking-widest text-sm flex items-center justify-center gap-2 ${
-                      isUploadingProject || (selectedProjectFiles && !filesReadyToCreate)
+                      isUploadingProject
                         ? 'bg-stone-400 text-stone-600 cursor-not-allowed opacity-50'
                         : 'bg-white text-black hover:bg-stone-200'
                     }`}
                   >
-                    <Plus size={16} /> Create Project
+                    {isUploadingProject ? '⏳ Creating...' : <><Plus size={16} /> Create Project</>}
                   </motion.button>
                 </form>
 
