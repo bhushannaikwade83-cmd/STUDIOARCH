@@ -182,14 +182,14 @@ export function useSupabaseMutation() {
     },
     update: async (table, id, data) => {
       console.log(`📝 [API Update] ${table}/${id}:`, data);
-      return await apiCall(`/${table}/${id}`, {
+      return await apiCall(`/${table}?id=${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
       });
     },
     remove: async (table, id) => {
       console.log(`🗑️ [API Delete] ${table}/${id}`);
-      return await apiCall(`/${table}/${id}`, {
+      return await apiCall(`/${table}?id=${id}`, {
         method: 'DELETE',
       });
     },
