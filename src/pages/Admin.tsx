@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogOut, Menu, X, Home, Settings, Edit2, Image, FileText, ArrowLeft, Youtube, Trash2, Plus, Mail, Check, Download, Zap } from 'lucide-react';
 import { compressImage, compressVideo, formatFileSize, shouldCompress } from '../utils/compression';
-import { login, logout as logoutAuth, isAuthenticated as checkAuth } from '../utils/auth';
+import { login, logout as logoutAuth, isAuthenticated as checkAuth, getToken } from '../utils/auth';
 
 // Backend upload function
 const uploadToBackend = async (file: File, fileType: string, onProgress?: (progress: number) => void) => {
@@ -568,22 +568,47 @@ export default function Admin() {
   };
 
   const handleSaveProject = async (id: number) => {
-    const result = await updateProject('projects', id, {
-      name: editProjectData.name,
-      location: editProjectData.location,
-      year: editProjectData.year,
-      category: editProjectData.category,
-      description: editProjectData.description,
-      images: editingProjectImages.length > 0 ? editingProjectImages : null,
-    });
-    if (result.success) {
-      setEditingProjectId(null);
-      setEditProjectData({});
-      setEditingProjectImages([]);
-      refetchProjects();
-      showSuccessNotification('Project updated!');
-    } else {
-      showSuccessNotification('Failed to update project');
+    try {
+      // Create FormData for multipart request with files
+      const formData = new FormData();
+      formData.append('name', editProjectData.name || '');
+      formData.append('location', editProjectData.location || '');
+      formData.append('year', editProjectData.year || '');
+      formData.append('category', editProjectData.category || '');
+      formData.append('description', editProjectData.description || '');
+      formData.append('existingImages', JSON.stringify(editingProjectImages));
+
+      // Add any pending files
+      if (selectedEditFiles) {
+        for (let i = 0; i < selectedEditFiles.length; i++) {
+          formData.append('files', selectedEditFiles[i]);
+        }
+      }
+
+      const token = getToken();
+      const response = await fetch(`https://digitrixmedia.com/studioarch/api/projects?id=${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setEditingProjectId(null);
+        setEditProjectData({});
+        setEditingProjectImages([]);
+        setSelectedEditFiles(null);
+        refetchProjects();
+        showSuccessNotification('Project updated!');
+      } else {
+        throw new Error(result.error || 'Update failed');
+      }
+    } catch (error) {
+      console.error('❌ Project update failed:', error);
+      showSuccessNotification('Failed to update project: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -717,8 +742,6 @@ export default function Admin() {
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('🚀 Starting project creation...');
-    console.log('📝 Project Data:', newProjectData);
-    console.log('🖼️ Project Images:', newProjectImages);
 
     if (!newProjectData.name?.trim()) {
       console.error('❌ Project name is required');
@@ -726,37 +749,51 @@ export default function Admin() {
       return;
     }
 
-    const projectData = {
-      name: newProjectData.name.trim(),
-      location: newProjectData.location?.trim() || '',
-      year: newProjectData.year || new Date().getFullYear().toString(),
-      category: newProjectData.category?.trim() || '',
-      description: newProjectData.description?.trim() || '',
-      images: newProjectImages.length > 0 ? newProjectImages : null,
-    };
+    try {
+      // Create FormData for multipart request with files
+      const formData = new FormData();
+      formData.append('name', newProjectData.name.trim());
+      formData.append('location', newProjectData.location?.trim() || '');
+      formData.append('year', newProjectData.year || new Date().getFullYear().toString());
+      formData.append('category', newProjectData.category?.trim() || '');
+      formData.append('description', newProjectData.description?.trim() || '');
+      formData.append('existingImages', JSON.stringify(newProjectImages));
 
-    console.log('📤 Sending to Supabase:', {
-      table: 'projects',
-      data: projectData
-    });
+      // Add any pending files
+      if (selectedProjectFiles) {
+        for (let i = 0; i < selectedProjectFiles.length; i++) {
+          formData.append('files', selectedProjectFiles[i]);
+        }
+      }
 
-    const result = await insertProject('projects', projectData);
+      const token = getToken();
+      const response = await fetch('https://digitrixmedia.com/studioarch/api/projects', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
 
-    console.log('📥 Supabase Response:', result);
+      const result = await response.json();
+      console.log('📥 Response:', result);
 
-    if (result.success) {
-      console.log('✅ Project created successfully!');
-      console.log('📊 New Project ID:', result.data?.[0]?.id);
-      setNewProjectData({ name: '', location: '', year: new Date().getFullYear().toString(), category: '', description: '' });
-      setNewProjectImages([]);
-      setSelectedProjectFiles(null);
-      setFilesReadyToCreate(false);
-      setIsUploadingProject(false);
-      refetchProjects();
-      showSuccessNotification('✅ Project created successfully!');
-    } else {
-      console.error('❌ Project creation failed:', result.error);
-      showSuccessNotification('Failed to create project: ' + result.error);
+      if (result.success) {
+        console.log('✅ Project created successfully!');
+        console.log('📸 Uploaded URLs:', result.uploadedUrls);
+        setNewProjectData({ name: '', location: '', year: new Date().getFullYear().toString(), category: '', description: '' });
+        setNewProjectImages([]);
+        setSelectedProjectFiles(null);
+        setFilesReadyToCreate(false);
+        setIsUploadingProject(false);
+        refetchProjects();
+        showSuccessNotification('✅ Project created successfully!');
+      } else {
+        throw new Error(result.error || 'Creation failed');
+      }
+    } catch (error) {
+      console.error('❌ Project creation failed:', error);
+      showSuccessNotification('Failed to create project: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
