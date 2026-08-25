@@ -29,7 +29,7 @@ export default function Home() {
   // Fetch contact info from Supabase
   const { contactInfo } = useContactInfo();
 
-  const [projects, setProjects] = useState(() => PROJECTS);
+  const [projects, setProjects] = useState<typeof PROJECTS>([]);
   const [carouselImages, setCarouselImages] = useState<string[]>([]);
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -410,7 +410,7 @@ export default function Home() {
             layout
             className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px] md:auto-rows-[350px]"
           >
-            {filteredProjects.map((project, idx) => (
+            {filteredProjects && filteredProjects.map((project, idx) => (
               <motion.div
                 key={project.id}
                 layout
@@ -429,8 +429,8 @@ export default function Home() {
                     {/* Image with opacity control */}
                     <div className="w-full h-full overflow-hidden bg-stone-900">
                       <motion.img
-                        src={project.images[0]}
-                        alt={project.name}
+                        src={project.images?.[0] || ''}
+                        alt={project.title || project.name || 'Project'}
                         className="w-full h-full object-cover"
                         loading="lazy"
                         animate={{

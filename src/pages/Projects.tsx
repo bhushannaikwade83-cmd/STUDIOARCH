@@ -108,7 +108,7 @@ export default function Projects() {
   const selectedCategoryFromState = (location.state as any)?.selectedCategory || null;
 
   const { data: supabaseProjects, loading, error } = useProjects();
-  const [projects, setProjects] = useState(() => PROJECTS);
+  const [projects, setProjects] = useState<typeof PROJECTS>([]);
   const [selectedProject, setSelectedProject] = useState<typeof PROJECTS[0] | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [hoveredProjectId, setHoveredProjectId] = useState<number | null>(null);
@@ -124,7 +124,7 @@ export default function Projects() {
 
   // Auto-advance slideshow when project is selected (but NOT when video is playing)
   useEffect(() => {
-    if (!selectedProject || selectedProject.images.length <= 1) return;
+    if (!selectedProject || !selectedProject.images || selectedProject.images.length <= 1) return;
 
     // Don't auto-advance if current item is a video
     const currentImage = selectedProject.images[selectedImageIndex];
@@ -297,8 +297,8 @@ export default function Projects() {
                 {/* Image with fade on hover */}
                 <div className="w-full h-full overflow-hidden bg-stone-900">
                   <motion.img
-                    src={project.images[0]}
-                    alt={project.name}
+                    src={project.images?.[0] || ''}
+                    alt={project.title || project.name || 'Project'}
                     className="w-full h-full object-cover"
                     loading="lazy"
                     animate={{
