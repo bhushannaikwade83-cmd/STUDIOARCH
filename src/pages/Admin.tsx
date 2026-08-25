@@ -1395,13 +1395,61 @@ export default function Admin() {
                             <textarea value={(editProjectData.description ?? project.description)} onChange={e => setEditProjectData(prev => ({ ...prev, description: e.target.value }))}
                               rows={3} className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-white/40 resize-none" />
                           </div>
+                          <div>
+                            <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Images & Videos ({editingProjectImages.length}/20)</label>
+                            {editingProjectImages.length > 0 && (
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                                {editingProjectImages.map((img, idx) => (
+                                  <div key={idx} className="relative group">
+                                    <div className="bg-white/10 rounded overflow-hidden aspect-square flex items-center justify-center">
+                                      {img.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                        <img src={img} alt="preview" className="w-full h-full object-cover" />
+                                      ) : img.match(/\.(mp4|webm|mov|avi|mkv)$/i) ? (
+                                        <div className="flex flex-col items-center gap-2 text-stone-400"><FileText size={24} /> Video</div>
+                                      ) : (
+                                        <div className="text-xs text-stone-500 text-center px-2 break-all">{img.slice(-30)}</div>
+                                      )}
+                                    </div>
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      onClick={() => handleRemoveProjectImage(idx)}
+                                      className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <X size={12} className="text-white" />
+                                    </motion.button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <label className="block">
+                              <input
+                                type="file"
+                                multiple
+                                accept="image/*,video/*"
+                                onChange={(e) => handleSelectEditFiles(e.target.files)}
+                                className="hidden"
+                              />
+                              <motion.div whileHover={{ scale: 1.02 }} className="px-4 py-2 bg-white/10 border border-white/20 rounded text-sm uppercase tracking-widest hover:bg-white/20 cursor-pointer text-center">
+                                {isUploadingEdit ? '⏳ Uploading...' : '📁 Add Files'}
+                              </motion.div>
+                            </label>
+                            {filesReadyToUpdate && !isUploadingEdit && (
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                onClick={handleUploadEditFiles}
+                                className="w-full mt-2 px-3 py-2 bg-blue-500/30 border border-blue-500/50 rounded text-sm uppercase tracking-widest hover:bg-blue-500/40"
+                              >
+                                Upload Files
+                              </motion.button>
+                            )}
+                          </div>
                           <div className="flex gap-2">
                             <motion.button whileHover={{ scale: 1.02 }} onClick={() => {
                               handleSaveProject(project.id);
                             }} className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded text-sm uppercase tracking-widest hover:bg-stone-200">
                               <Check size={14} /> Save
                             </motion.button>
-                            <motion.button whileHover={{ scale: 1.02 }} onClick={() => { setEditingProjectId(null); setEditProjectData({}); }} className="px-4 py-2 bg-white/10 border border-white/20 rounded text-sm uppercase tracking-widest hover:bg-white/20">Cancel</motion.button>
+                            <motion.button whileHover={{ scale: 1.02 }} onClick={() => { setEditingProjectId(null); setEditProjectData({}); setEditingProjectImages([]); }} className="px-4 py-2 bg-white/10 border border-white/20 rounded text-sm uppercase tracking-widest hover:bg-white/20">Cancel</motion.button>
                           </div>
                         </div>
                       ) : (
@@ -1427,7 +1475,11 @@ export default function Admin() {
                             )}
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
-                            <motion.button whileHover={{ scale: 1.05 }} onClick={() => { setEditingProjectId(project.id); setEditProjectData({}); }}
+                            <motion.button whileHover={{ scale: 1.05 }} onClick={() => {
+                              setEditingProjectId(project.id);
+                              setEditProjectData({});
+                              setEditingProjectImages(Array.isArray(project.images) ? project.images : []);
+                            }}
                               className="px-4 py-2 bg-white/10 border border-white/20 rounded text-sm uppercase tracking-widest hover:bg-white/20">Edit</motion.button>
                             <motion.button whileHover={{ scale: 1.05 }} onClick={() => handleDeleteProject(project.id)}
                               className="p-2 bg-red-500/20 border border-red-500/40 rounded hover:bg-red-500/30">
