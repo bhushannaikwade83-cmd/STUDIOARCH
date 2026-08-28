@@ -6,6 +6,12 @@ const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/studioarch/api`
   : 'https://digitrixmedia.com/studioarch/api';
 
+console.log('🔧 [API] Environment:', {
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  API_BASE: API_BASE,
+  allEnv: import.meta.env
+});
+
 export async function apiCall(endpoint, options = {}) {
   const token = getToken();
   const headers = {
@@ -24,6 +30,7 @@ export async function apiCall(endpoint, options = {}) {
     const response = await fetch(url, {
       ...options,
       headers,
+      cache: 'no-store',
     });
 
     if (!response.ok) {
