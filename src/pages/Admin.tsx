@@ -85,10 +85,11 @@ const uploadToBackend = async (file: File, fileType: string, onProgress?: (progr
     return { success: false, error: error instanceof Error ? error.message : 'Upload failed' };
   }
 };
-import { useProjects, useSupabaseMutation, useJournalPosts, useContactMessages, useGallery, useEventVideos, useContentSettings } from '../hooks/useMariaDbData';
+import { useProjects, useJournalPosts, useContactMessages, useGallery, useEventVideos, useContentSettings } from '../hooks/useMariaDbData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
+import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo } from '../utils/api';
 
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB - videos are uploaded uncompressed
 const MAX_PROJECT_FILES = 20; // images + videos combined, per project
@@ -132,13 +133,6 @@ export default function Admin() {
   const { data: galleryFolders, refetch: refetchGallery, loading: galleryLoading } = useGallery();
   const { data: videos, refetch: refetchVideos, loading: videosLoading } = useEventVideos();
   const { settings: contentSettings, loading: settingsLoading } = useContentSettings();
-  const { insert: insertProject, update: updateProject, remove: deleteProject } = useSupabaseMutation();
-  const { insert: insertJournal, update: updateJournal, remove: deleteJournal } = useSupabaseMutation();
-  const { insert: insertGalleryFolder, remove: deleteGalleryFolder } = useSupabaseMutation();
-  const { insert: insertGalleryItem, remove: deleteGalleryItem } = useSupabaseMutation();
-  const { insert: insertVideo, update: updateVideo, remove: deleteVideo } = useSupabaseMutation();
-  const { insert: insertSettings, update: updateSettings } = useSupabaseMutation();
-  const { remove: deleteMessage } = useSupabaseMutation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -423,16 +417,12 @@ export default function Admin() {
   const handleRemoveVideo = async (id: number) => {
     try {
       // Delete from database
-      const result = await deleteVideo('event_videos', id);
-      if (result.success) {
-        // Remove from UI
-        setEventVideos(prev => prev.filter(v => v.id !== id));
-        showSuccessNotification('Video deleted!');
-        // Refetch to sync
-        await refetchVideos();
-      } else {
-        setVideoError('Failed to delete video');
-      }
+      await deleteEventVideo(id);
+      // Remove from UI
+      setEventVideos(prev => prev.filter(v => v.id !== id));
+      showSuccessNotification('Video deleted!');
+      // Refetch to sync
+      await refetchVideos();
     } catch (error) {
       setVideoError(error instanceof Error ? error.message : 'Failed to delete video');
     }
@@ -668,46 +658,46 @@ export default function Admin() {
   const handleAddJournalPost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPost.title.trim()) return;
-    const result = await insertJournal('journal_posts', {
-      title: newPost.title.trim(),
-      date: newPost.date,
-      excerpt: newPost.excerpt,
-      category: newPost.category,
-    });
-    if (result.success) {
+    try {
+      await createJournalPost({
+        title: newPost.title.trim(),
+        date: newPost.date,
+        content: newPost.excerpt,
+        category: newPost.category,
+      });
       setNewPost({ title: '', date: '', excerpt: '', category: '' });
       refetchJournalPosts();
       showSuccessNotification('Journal post added!');
-    } else {
+    } catch (error) {
       showSuccessNotification('Failed to add post');
     }
   };
 
   const handleDeleteJournalPost = async (id: number) => {
     if (confirm('Delete this journal post?')) {
-      const result = await deleteJournal('journal_posts', id);
-      if (result.success) {
+      try {
+        await deleteJournalPost(id);
         refetchJournalPosts();
         showSuccessNotification('Post removed.');
-      } else {
+      } catch (error) {
         showSuccessNotification('Failed to delete post');
       }
     }
   };
 
   const handleSaveJournalPost = async (id: number) => {
-    const result = await updateJournal('journal_posts', id, {
-      title: editPostData.title,
-      date: editPostData.date,
-      excerpt: editPostData.excerpt,
-      category: editPostData.category,
-    });
-    if (result.success) {
+    try {
+      await updateJournalPost(id, {
+        title: editPostData.title,
+        date: editPostData.date,
+        content: editPostData.excerpt,
+        category: editPostData.category,
+      });
       setEditingPostId(null);
       setEditPostData({});
       refetchJournalPosts();
       showSuccessNotification('Post updated!');
-    } else {
+    } catch (error) {
       showSuccessNotification('Failed to update post');
     }
   };
@@ -2060,7 +2050,7 @@ export default function Admin() {
                           </div>
                           <motion.button
                             whileHover={{ scale: 1.05 }}
-                            onClick={() => deleteMessage('contact_messages', msg.id).then(() => refetchMessages())}
+                            onClick={() => deleteContactMessage(msg.id).then(() => refetchMessages()).catch(() => null)}
                             className="p-2 bg-red-500/20 border border-red-500/40 rounded hover:bg-red-500/30"
                           >
                             <Trash2 size={14} className="text-red-400" />

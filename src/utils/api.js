@@ -98,6 +98,13 @@ export async function createJournalPost(data) {
   });
 }
 
+export async function updateJournalPost(id, data) {
+  return apiCall(`/journal-posts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function deleteJournalPost(id) {
   return apiCall(`/journal-posts/${id}`, { method: 'DELETE' });
 }
