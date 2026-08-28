@@ -176,6 +176,8 @@ if ($method === 'GET') {
   $category = $_POST['category'] ?? null;
   $description = $_POST['description'] ?? null;
 
+  error_log('[DEBUG] Extracted values - title: ' . ($title ?? 'NULL') . ', location: ' . ($location ?? 'NULL'));
+
   // Get existing image URLs from form data
   $existingImages = $_POST['existingImages'] ?? null;
   $existingImagesArray = $existingImages ? json_decode($existingImages, true) : [];
@@ -189,21 +191,35 @@ if ($method === 'GET') {
 
   $conn = getConnection();
   $images_json = $images ? json_encode($images) : null;
+
+  error_log('[DEBUG] About to update project ' . $id . ' with title: ' . ($title ?? 'NULL'));
+
   $stmt = $conn->prepare(
     'UPDATE projects SET title = ?, location = ?, year = ?, category = ?, description = ?, images = ?, updated_at = NOW() WHERE id = ?'
   );
 
+  if (!$stmt) {
+    error_log('[ERROR] Prepare failed: ' . $conn->error);
+    http_response_code(500);
+    echo json_encode(['error' => 'Prepare failed: ' . $conn->error]);
+    $conn->close();
+    exit();
+  }
+
   $stmt->bind_param('ssssssi', $title, $location, $year, $category, $description, $images_json, $id);
 
   if ($stmt->execute()) {
+    error_log('[DEBUG] Update successful. Rows affected: ' . $stmt->affected_rows);
     echo json_encode([
       'success' => true,
       'images' => $images,
-      'uploadedUrls' => $uploadedUrls
+      'uploadedUrls' => $uploadedUrls,
+      'affectedRows' => $stmt->affected_rows
     ]);
   } else {
+    error_log('[ERROR] Execute failed: ' . $stmt->error);
     http_response_code(500);
-    echo json_encode(['error' => 'Update failed']);
+    echo json_encode(['error' => 'Update failed: ' . $stmt->error]);
   }
 
   $stmt->close();

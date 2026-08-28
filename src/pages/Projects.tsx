@@ -5,103 +5,19 @@ import { useState, useRef, useEffect } from 'react';
 import { useProjects } from '../hooks/useMariaDbData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 
-export const PROJECTS = [
-  {
-    id: 1,
-    name: "The Obsidian Villa",
-    location: "Mykonos, Greece",
-    year: "2024",
-    category: "Residential",
-    description: "A stunning cliffside villa featuring panoramic Aegean views with cutting-edge sustainable architecture and minimalist design.",
-    images: [
-      "/architecture-1.jpg",
-      "/architecture-2.jpg",
-    ],
-    size: 'large',
-    locationmapurl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3132.4234567890!2d25.3932!3d37.4467!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzfCsDI2JzQ1LjciTiAyNcKwMjMnNDUuNiJF!5e0!3m2!1sen!2sus!4v1234567890'
-  },
-  {
-    id: 2,
-    name: "Nexus Headquarters",
-    location: "Singapore",
-    year: "2023",
-    category: "Commercial",
-    description: "A futuristic corporate headquarters integrating smart building technology with luxury office spaces.",
-    images: [
-      "/architecture-3.jpg",
-    ],
-    size: 'medium',
-    locationmapurl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3988.6234567890!2d103.8198!3d1.3521!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMcKwMjEnMDcuNiJOIDEwM8KwNDknMDcuNCJF!5e0!3m2!1sen!2sus!4v1234567890'
-  },
-  {
-    id: 3,
-    name: "Alpine Retreat",
-    location: "Zermatt, Switzerland",
-    year: "2024",
-    category: "Hospitals",
-    description: "Exclusive medical facility combining traditional aesthetics with modern healthcare technology.",
-    images: [
-      "/architecture-4.jpg",
-    ],
-    size: 'medium',
-    locationmapurl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2732.5234567890!2d7.7491!3d46.0207!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2z0JTQtdC50L3Qv9C40YM!5e0!3m2!1sen!2sus!4v1234567890'
-  },
-  {
-    id: 4,
-    name: "Lumina Pavilion",
-    location: "Kyoto, Japan",
-    year: "2022",
-    category: "Schools",
-    description: "An avant-garde educational center showcasing the fusion of Eastern philosophy and Western design principles.",
-    images: [
-      "/architecture-5.jpg",
-      "/architecture-1.jpg",
-    ],
-    size: 'large',
-    locationmapurl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3268.2234567890!2d135.7681!3d35.0116!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzXCsDAwJzQ1LjgiTiAxMzXCsDQ2JzA1LjAiRQ!5e0!3m2!1sen!2sus!4v1234567890'
-  },
-  {
-    id: 5,
-    name: "Urban Sanctuary",
-    location: "New York, USA",
-    year: "2023",
-    category: "Residential",
-    description: "A contemporary urban residence blending industrial elements with warm minimalist interiors.",
-    images: [
-      "/architecture-2.jpg",
-    ],
-    size: 'small',
-    locationmapurl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3024.1234567890!2d-74.0060!3d40.7128!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2z0JTQtdC50L3Qv9C40YM!5e0!3m2!1sen!2sus!4v1234567890'
-  },
-  {
-    id: 6,
-    name: "Coastal Living",
-    location: "Malibu, California",
-    year: "2024",
-    category: "PMC",
-    description: "Premium mixed-use complex with breathtaking views and sustainable architecture.",
-    images: [
-      "/architecture-3.jpg",
-      "/architecture-4.jpg",
-    ],
-    size: 'large',
-    locationmapurl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3318.7234567890!2d-118.6837!3d34.0195!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2z0JTQtdC50L3Qv9C40YM!5e0!3m2!1sen!2sus!4v1234567890'
-  },
-  {
-    id: 7,
-    name: "Serenity Interiors",
-    location: "Dubai, UAE",
-    year: "2024",
-    category: "Interior",
-    description: "Luxurious interior design project showcasing sophisticated minimalism with premium materials and curated lighting to create harmonious living spaces.",
-    images: [
-      "/architecture-1.jpg",
-      "/architecture-2.jpg",
-    ],
-    size: 'large',
-    locationmapurl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3618.3234567890!2d55.2708!3d25.2048!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjXCsDEyJzE3LjMiTiA1NcKwMTYnMDUuMiJF!5e0!3m2!1sen!2sus!4v1234567890'
-  },
-];
+// Type definition for projects (using database projects now)
+type Project = {
+  id: number;
+  name?: string;
+  title?: string;
+  location: string;
+  year: string;
+  category: string;
+  description: string;
+  images?: string[] | null;
+  size?: string;
+  locationmapurl?: string;
+};
 
 export default function Projects() {
   const location = useLocation();
