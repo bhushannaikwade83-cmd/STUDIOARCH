@@ -122,8 +122,10 @@ export default function Admin() {
   const [philosophyText, setPhilosophyText] = useState("At 1StudioArch, we believe architecture is the thoughtful arrangement of space, light, and material...");
   const [isUploadingProject, setIsUploadingProject] = useState(false);
   const [isUploadingEdit, setIsUploadingEdit] = useState(false);
-  const [selectedProjectFiles, setSelectedProjectFiles] = useState<FileList | null>(null);
-  const [selectedEditFiles, setSelectedEditFiles] = useState<FileList | null>(null);
+  const [selectedProjectFiles, setSelectedProjectFiles] = useState<File[] | null>(null);
+  const [selectedEditFiles, setSelectedEditFiles] = useState<File[] | null>(null);
+  const [isCompressingProjectFiles, setIsCompressingProjectFiles] = useState(false);
+  const [isCompressingEditFiles, setIsCompressingEditFiles] = useState(false);
   const [filesReadyToCreate, setFilesReadyToCreate] = useState(false);
   const [filesReadyToUpdate, setFilesReadyToUpdate] = useState(false);
 
@@ -868,7 +870,7 @@ export default function Admin() {
     }
   };
 
-  const handleSelectProjectFiles = (files: FileList | null) => {
+  const handleSelectProjectFiles = async (files: FileList | null) => {
     if (!files) return;
 
     const canAdd = 20 - newProjectImages.length;
@@ -877,11 +879,36 @@ export default function Admin() {
       return;
     }
 
-    setSelectedProjectFiles(files);
-    showSuccessNotification(`✅ ${files.length} file(s) ready. Click "Create Project" to upload and save.`);
+    setIsCompressingProjectFiles(true);
+    showSuccessNotification(`📦 Compressing ${files.length} file(s)...`);
+
+    const originalFiles = Array.from(files);
+    const processedFiles: File[] = [];
+
+    for (const file of originalFiles) {
+      try {
+        if (file.type.startsWith('image/') && shouldCompress(file)) {
+          const compressed = await compressImage(file);
+          console.log(`✅ Compressed ${file.name}: ${formatFileSize(file.size)} → ${formatFileSize(compressed.size)}`);
+          processedFiles.push(compressed);
+        } else if (file.type.startsWith('video/')) {
+          const processed = await compressVideo(file);
+          processedFiles.push(processed);
+        } else {
+          processedFiles.push(file);
+        }
+      } catch (error) {
+        console.error(`Failed to compress ${file.name}:`, error);
+        processedFiles.push(file); // fallback to original if compression fails
+      }
+    }
+
+    setSelectedProjectFiles(processedFiles);
+    setIsCompressingProjectFiles(false);
+    showSuccessNotification(`✅ ${processedFiles.length} file(s) ready. Click "Create Project" to upload and save.`);
   };
 
-  const handleSelectEditFiles = (files: FileList | null) => {
+  const handleSelectEditFiles = async (files: FileList | null) => {
     if (!files) return;
 
     const canAdd = 20 - editingProjectImages.length;
@@ -890,8 +917,33 @@ export default function Admin() {
       return;
     }
 
-    setSelectedEditFiles(files);
-    showSuccessNotification(`✅ ${files.length} file(s) ready. Click "Save" to upload and update.`);
+    setIsCompressingEditFiles(true);
+    showSuccessNotification(`📦 Compressing ${files.length} file(s)...`);
+
+    const originalFiles = Array.from(files);
+    const processedFiles: File[] = [];
+
+    for (const file of originalFiles) {
+      try {
+        if (file.type.startsWith('image/') && shouldCompress(file)) {
+          const compressed = await compressImage(file);
+          console.log(`✅ Compressed ${file.name}: ${formatFileSize(file.size)} → ${formatFileSize(compressed.size)}`);
+          processedFiles.push(compressed);
+        } else if (file.type.startsWith('video/')) {
+          const processed = await compressVideo(file);
+          processedFiles.push(processed);
+        } else {
+          processedFiles.push(file);
+        }
+      } catch (error) {
+        console.error(`Failed to compress ${file.name}:`, error);
+        processedFiles.push(file); // fallback to original if compression fails
+      }
+    }
+
+    setSelectedEditFiles(processedFiles);
+    setIsCompressingEditFiles(false);
+    showSuccessNotification(`✅ ${processedFiles.length} file(s) ready. Click "Save" to upload and update.`);
   };
 
   const handleUploadEditFiles = async () => {
