@@ -487,9 +487,18 @@ export default function Admin() {
 
         if (result.success) {
           // Refresh gallery data
-          const galleryData = await getGallery();
-          if (galleryData && Array.isArray(galleryData)) {
-            setGalleryImages(galleryData);
+          try {
+            console.log('📸 Fetching gallery data...');
+            const galleryData = await getGallery();
+            console.log('📸 Gallery data received:', galleryData);
+            if (galleryData && Array.isArray(galleryData)) {
+              console.log('📸 Setting gallery images:', galleryData.length);
+              setGalleryImages(galleryData);
+            } else {
+              console.warn('📸 Gallery data not an array:', galleryData);
+            }
+          } catch (error) {
+            console.error('📸 Failed to fetch gallery:', error);
           }
           setNewImageUrl('');
           setNewImageTitle('');
@@ -544,9 +553,16 @@ export default function Admin() {
             console.log('✅ Database save successful, updating UI...');
 
             // Refetch gallery data
-            const galleryData = await getGallery();
-            if (galleryData && Array.isArray(galleryData)) {
-              setGalleryImages(galleryData);
+            try {
+              console.log('📸 Fetching gallery data...');
+              const galleryData = await getGallery();
+              console.log('📸 Gallery data received:', galleryData);
+              if (galleryData && Array.isArray(galleryData)) {
+                console.log('📸 Setting gallery images:', galleryData.length);
+                setGalleryImages(galleryData);
+              }
+            } catch (error) {
+              console.error('📸 Failed to fetch gallery:', error);
             }
 
             setNewImageUrl('');
