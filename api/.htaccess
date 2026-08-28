@@ -1,3 +1,18 @@
+# CORS Headers
+<IfModule mod_headers.c>
+  Header set Access-Control-Allow-Origin "*"
+  Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+  Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-File-Name, X-File-Type"
+  Header set Access-Control-Max-Age "86400"
+</IfModule>
+
+# Handle preflight OPTIONS requests
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_METHOD} OPTIONS
+  RewriteRule ^(.*)$ - [L,R=200]
+</IfModule>
+
 # Clean URLs: /api/projects -> projects.php
 <IfModule mod_rewrite.c>
   RewriteEngine On
