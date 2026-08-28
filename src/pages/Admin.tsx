@@ -89,7 +89,7 @@ import { useProjects, useJournalPosts, useContactMessages, useGallery, useEventV
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
-import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo } from '../utils/api';
+import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo } from '../utils/api';
 
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB - videos are uploaded uncompressed
 const MAX_PROJECT_FILES = 20; // images + videos combined, per project
@@ -322,7 +322,7 @@ export default function Admin() {
         const youtubeId = extractYoutubeId(newVideoUrl.trim());
         if (!youtubeId) { setVideoError('Invalid YouTube URL.'); return; }
 
-        const result = await insertVideo('event_videos', {
+        const result = await createEventVideo({
           title: newVideoTitle.trim(),
           youtube_id: youtubeId,
           url: newVideoUrl.trim(),
@@ -456,13 +456,13 @@ export default function Admin() {
         // Use first folder or create one
         let folderId = galleryFolders?.[0]?.id;
         if (!folderId) {
-          const folderResult = await insertGalleryFolder('gallery_folders', { name: 'Portfolio', display_order: 0 });
+          const folderResult = await createGalleryFolder({ name: 'Portfolio', display_order: 0 });
           if (folderResult.success && folderResult.data[0]) {
             folderId = folderResult.data[0].id;
           }
         }
 
-        const result = await insertGalleryItem('gallery_items', {
+        const result = await createGalleryItem({
           folder_id: folderId,
           title: newImageTitle.trim(),
           image_url: newImageUrl.trim(),
@@ -505,14 +505,14 @@ export default function Admin() {
           // Use first folder or create one
           let folderId = galleryFolders?.[0]?.id;
           if (!folderId) {
-            const folderResult = await insertGalleryFolder('gallery_folders', { name: 'Portfolio', display_order: 0 });
+            const folderResult = await createGalleryFolder({ name: 'Portfolio', display_order: 0 });
             if (folderResult.success && folderResult.data[0]) {
               folderId = folderResult.data[0].id;
             }
           }
 
           // Save to database - save proxy URL directly (simpler!)
-          const dbResult = await insertGalleryItem('gallery_items', {
+          const dbResult = await createGalleryItem({
             folder_id: folderId,
             title: newImageTitle.trim(),
             image_url: uploadResult.url, // Save proxy URL directly
@@ -638,19 +638,19 @@ export default function Admin() {
 
   const handleSaveContact = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Update existing contact_info record (assuming id = 1)
-    const result = await updateProject('contact_info', 1, {
-      email: contactInfo.email,
-      phone: contactInfo.phone,
-      locations: contactInfo.locations,
-      instagram: contactInfo.instagram,
-      linkedin: contactInfo.linkedin,
-      youtube: contactInfo.youtube,
-      locationmapurl: contactInfo.locationmapurl,
-    });
-    if (result.success) {
+    // Update contact_info via API
+    try {
+      await updateContactInfo({
+        email: contactInfo.email,
+        phone: contactInfo.phone,
+        locations: contactInfo.locations,
+        instagram: contactInfo.instagram,
+        linkedin: contactInfo.linkedin,
+        youtube: contactInfo.youtube,
+        locationmapurl: contactInfo.locationmapurl,
+      });
       showSuccessNotification('Contact info saved!');
-    } else {
+    } catch (error) {
       showSuccessNotification('Failed to save contact info');
     }
   };
@@ -780,7 +780,7 @@ export default function Admin() {
   const handleRemoveImage = async (id: number) => {
     try {
       // Delete from database
-      const result = await deleteGalleryItem('gallery_items', id);
+      const result = await deleteGalleryItem(id);
       if (result.success) {
         // Remove from UI
         setGalleryImages(prev => prev.filter(img => img.id !== id));

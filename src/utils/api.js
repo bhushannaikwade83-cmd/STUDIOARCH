@@ -123,3 +123,46 @@ export async function createContactMessage(data) {
 export async function deleteContactMessage(id) {
   return apiCall(`/contact-messages/${id}`, { method: 'DELETE' });
 }
+
+export async function getContactInfo() {
+  return apiCall('/contact-info');
+}
+
+export async function updateContactInfo(data) {
+  return apiCall('/contact-info', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getContentSettings() {
+  return apiCall('/content-settings');
+}
+
+export async function updateContentSettings(data) {
+  return apiCall('/content-settings', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// Stub functions for gallery and events (not yet migrated from Supabase)
+export async function getGallery() {
+  return [];
+}
+
+export async function createGalleryFolder(data) {
+  return { success: true, id: Date.now() };
+}
+
+export async function deleteGalleryFolder(id) {
+  return { success: true };
+}
+
+export async function createGalleryItem(data) {
+  return { success: true, id: Date.now() };
+}
+
+export async function deleteGalleryItem(id) {
+  return { success: true };
+}
