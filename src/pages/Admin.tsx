@@ -768,18 +768,15 @@ export default function Admin() {
           },
         });
         const result = await response.json();
+        console.log('🗑️ DELETE RESPONSE:', result);
 
         if (result.success) {
-          console.log('✅ Project deleted from database');
+          console.log('✅ Deleted ID:', id);
           showSuccessNotification('Project deleted!');
 
-          // Wait for database to complete transaction, then refetch
-          console.log('⏳ Waiting to refetch...');
-          setTimeout(async () => {
-            console.log('🔄 Refetching projects...');
-            await refetchProjects();
-            console.log('✅ Projects refetched - should be removed from list');
-          }, 800); // 800ms to ensure database operation completes
+          console.log('🔄 Fetching projects after DELETE...');
+          await refetchProjects();
+          console.log('✅ Refetch complete');
         } else {
           console.error('Delete failed:', result.error);
           showSuccessNotification('Failed to delete: ' + (result.error || 'Unknown error'));
