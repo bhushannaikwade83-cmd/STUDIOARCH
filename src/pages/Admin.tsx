@@ -487,8 +487,12 @@ export default function Admin() {
 
         if (result.success) {
           // Refresh gallery data via hook refetch
-          console.log('📸 Refetching gallery data...');
-          await refetchGallery();
+          console.log('📸 Refetching gallery data...', { refetchGallery });
+          refetchGallery();
+          console.log('📸 Refetch called, waiting for data...');
+          // Wait a moment for refetch to complete
+          await new Promise(resolve => setTimeout(resolve, 500));
+          console.log('📸 After refetch, galleryImages:', galleryImages.length);
           setNewImageUrl('');
           setNewImageTitle('');
           showSuccessNotification('Image added to gallery!');
