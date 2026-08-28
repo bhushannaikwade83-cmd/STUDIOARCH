@@ -93,6 +93,15 @@ if ($method === 'GET') {
   // Get all projects
   $conn = getConnection();
   error_log('[DEBUG] GET request - querying projects table');
+  error_log('[DEBUG] Connected to DB: ' . $conn->host_info . ' | Server: ' . php_uname('n'));
+
+  $dbNameResult = $conn->query('SELECT DATABASE() as db');
+  $dbNameRow = $dbNameResult->fetch_assoc();
+  error_log('[DEBUG] Current database in use: ' . $dbNameRow['db']);
+
+  $countResult = $conn->query('SELECT COUNT(*) as total FROM projects');
+  $countRow = $countResult->fetch_assoc();
+  error_log('[DEBUG] Total rows in projects table right now: ' . $countRow['total']);
 
   $result = $conn->query('SELECT * FROM projects ORDER BY created_at DESC');
 
