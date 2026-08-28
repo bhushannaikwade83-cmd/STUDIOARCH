@@ -147,6 +147,7 @@ if ($method === 'GET') {
   $stmt->bind_param('ssssss', $title, $location, $year, $category, $description, $images_json);
 
   if ($stmt->execute()) {
+    error_log('[SUCCESS] Project created with ID: ' . $stmt->insert_id);
     http_response_code(201);
     echo json_encode([
       'success' => true,
@@ -155,8 +156,9 @@ if ($method === 'GET') {
       'uploadedUrls' => $uploadedUrls
     ]);
   } else {
+    error_log('[ERROR] INSERT execute failed: ' . $stmt->error);
     http_response_code(500);
-    echo json_encode(['error' => 'Insert failed']);
+    echo json_encode(['error' => 'Insert failed: ' . $stmt->error]);
   }
 
   $stmt->close();
@@ -257,10 +259,12 @@ if ($method === 'GET') {
   $stmt->bind_param('i', $id);
 
   if ($stmt->execute()) {
-    echo json_encode(['success' => true]);
+    error_log('[SUCCESS] Project deleted. ID: ' . $id . ', Rows affected: ' . $stmt->affected_rows);
+    echo json_encode(['success' => true, 'affectedRows' => $stmt->affected_rows]);
   } else {
+    error_log('[ERROR] DELETE execute failed: ' . $stmt->error);
     http_response_code(500);
-    echo json_encode(['error' => 'Delete failed']);
+    echo json_encode(['error' => 'Delete failed: ' . $stmt->error]);
   }
 
   $stmt->close();
