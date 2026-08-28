@@ -54,6 +54,8 @@ import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
 
+const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB - videos are uploaded uncompressed
+
 type EventVideo = { id: number; youtube_id?: string; title: string; url?: string; isYoutube: boolean; };
 type JournalPost = { id: number; title: string; date: string; excerpt: string; category: string; };
 type Project = { id: number; name: string; location: string; year: string; category: string; description: string; locationmapurl?: string; images?: string[]; };
@@ -904,32 +906,39 @@ export default function Admin() {
     }
 
     setIsCompressingProjectFiles(true);
-    showSuccessNotification(`📦 Compressing ${files.length} file(s)...`);
+    showSuccessNotification(`📦 Processing ${files.length} file(s)...`);
 
     const originalFiles = Array.from(files);
     const processedFiles: File[] = [];
 
     for (const file of originalFiles) {
       try {
-        if (file.type.startsWith('image/') && shouldCompress(file)) {
-          const compressed = await compressImage(file);
-          console.log(`✅ Compressed ${file.name}: ${formatFileSize(file.size)} → ${formatFileSize(compressed.size)}`);
-          processedFiles.push(compressed);
-        } else if (file.type.startsWith('video/')) {
-          const processed = await compressVideo(file);
-          processedFiles.push(processed);
-        } else {
+        if (file.type.startsWith('video/')) {
+          // Videos: no compression, just enforce 500MB limit
+          if (file.size > MAX_VIDEO_SIZE) {
+            showSuccessNotification(`❌ ${file.name} is ${formatFileSize(file.size)} - videos must be under 500MB`);
+            continue;
+          }
+          console.log(`🎬 Video accepted: ${file.name} (${formatFileSize(file.size)})`);
           processedFiles.push(file);
+        } else if (file.type.startsWith('image/')) {
+          const compressed = shouldCompress(file) ? await compressImage(file) : file;
+          console.log(`✅ Image ${file.name}: ${formatFileSize(file.size)} → ${formatFileSize(compressed.size)}`);
+          processedFiles.push(compressed);
+        } else {
+          showSuccessNotification(`❌ ${file.name} - only images and videos allowed`);
         }
       } catch (error) {
-        console.error(`Failed to compress ${file.name}:`, error);
+        console.error(`Failed to process ${file.name}:`, error);
         processedFiles.push(file); // fallback to original if compression fails
       }
     }
 
     setSelectedProjectFiles(prev => [...(prev || []), ...processedFiles]);
     setIsCompressingProjectFiles(false);
-    showSuccessNotification(`✅ ${processedFiles.length} file(s) ready. Click "Create Project" to upload and save.`);
+    if (processedFiles.length > 0) {
+      showSuccessNotification(`✅ ${processedFiles.length} file(s) ready. Click "Create Project" to upload and save.`);
+    }
   };
 
   const handleSelectEditFiles = async (files: FileList | null) => {
@@ -942,32 +951,39 @@ export default function Admin() {
     }
 
     setIsCompressingEditFiles(true);
-    showSuccessNotification(`📦 Compressing ${files.length} file(s)...`);
+    showSuccessNotification(`📦 Processing ${files.length} file(s)...`);
 
     const originalFiles = Array.from(files);
     const processedFiles: File[] = [];
 
     for (const file of originalFiles) {
       try {
-        if (file.type.startsWith('image/') && shouldCompress(file)) {
-          const compressed = await compressImage(file);
-          console.log(`✅ Compressed ${file.name}: ${formatFileSize(file.size)} → ${formatFileSize(compressed.size)}`);
-          processedFiles.push(compressed);
-        } else if (file.type.startsWith('video/')) {
-          const processed = await compressVideo(file);
-          processedFiles.push(processed);
-        } else {
+        if (file.type.startsWith('video/')) {
+          // Videos: no compression, just enforce 500MB limit
+          if (file.size > MAX_VIDEO_SIZE) {
+            showSuccessNotification(`❌ ${file.name} is ${formatFileSize(file.size)} - videos must be under 500MB`);
+            continue;
+          }
+          console.log(`🎬 Video accepted: ${file.name} (${formatFileSize(file.size)})`);
           processedFiles.push(file);
+        } else if (file.type.startsWith('image/')) {
+          const compressed = shouldCompress(file) ? await compressImage(file) : file;
+          console.log(`✅ Image ${file.name}: ${formatFileSize(file.size)} → ${formatFileSize(compressed.size)}`);
+          processedFiles.push(compressed);
+        } else {
+          showSuccessNotification(`❌ ${file.name} - only images and videos allowed`);
         }
       } catch (error) {
-        console.error(`Failed to compress ${file.name}:`, error);
+        console.error(`Failed to process ${file.name}:`, error);
         processedFiles.push(file); // fallback to original if compression fails
       }
     }
 
     setSelectedEditFiles(prev => [...(prev || []), ...processedFiles]);
     setIsCompressingEditFiles(false);
-    showSuccessNotification(`✅ ${processedFiles.length} file(s) ready. Click "Save" to upload and update.`);
+    if (processedFiles.length > 0) {
+      showSuccessNotification(`✅ ${processedFiles.length} file(s) ready. Click "Save" to upload and update.`);
+    }
   };
 
   const handleUploadEditFiles = async () => {
@@ -1462,7 +1478,7 @@ export default function Admin() {
                                 {img.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                                   <img src={img} alt="preview" className="w-full h-full object-cover" />
                                 ) : img.match(/\.(mp4|webm|mov|avi|mkv)$/i) ? (
-                                  <div className="flex flex-col items-center gap-2 text-stone-400"><FileText size={24} /> Video</div>
+                                  <video src={img} className="w-full h-full object-cover" muted playsInline preload="metadata" controls />
                                 ) : (
                                   <div className="text-xs text-stone-500 text-center px-2 break-all">{img.slice(-30)}</div>
                                 )}
@@ -1507,7 +1523,7 @@ export default function Admin() {
                                   {file.type.startsWith('image/') ? (
                                     <img src={projectFilePreviewUrls[idx]} alt="preview" className="w-full h-full object-cover" />
                                   ) : (
-                                    <div className="flex flex-col items-center gap-2 text-stone-400"><FileText size={24} /> Video</div>
+                                    <video src={projectFilePreviewUrls[idx]} className="w-full h-full object-cover" muted playsInline preload="metadata" controls />
                                   )}
                                 </div>
                                 <div className="absolute bottom-1 left-1 right-1 bg-black/70 text-[10px] text-white px-1 py-0.5 rounded truncate">{formatFileSize(file.size)}</div>
@@ -1587,7 +1603,7 @@ export default function Admin() {
                                       {img.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                                         <img src={img} alt="preview" className="w-full h-full object-cover" />
                                       ) : img.match(/\.(mp4|webm|mov|avi|mkv)$/i) ? (
-                                        <div className="flex flex-col items-center gap-2 text-stone-400"><FileText size={24} /> Video</div>
+                                        <video src={img} className="w-full h-full object-cover" muted playsInline preload="metadata" controls />
                                       ) : (
                                         <div className="text-xs text-stone-500 text-center px-2 break-all">{img.slice(-30)}</div>
                                       )}
@@ -1641,7 +1657,7 @@ export default function Admin() {
                                         {file.type.startsWith('image/') ? (
                                           <img src={editFilePreviewUrls[idx]} alt="preview" className="w-full h-full object-cover" />
                                         ) : (
-                                          <div className="flex flex-col items-center gap-2 text-stone-400"><FileText size={24} /> Video</div>
+                                          <video src={editFilePreviewUrls[idx]} className="w-full h-full object-cover" muted playsInline preload="metadata" controls />
                                         )}
                                       </div>
                                       <div className="absolute bottom-1 left-1 right-1 bg-black/70 text-[10px] text-white px-1 py-0.5 rounded truncate">{formatFileSize(file.size)}</div>
