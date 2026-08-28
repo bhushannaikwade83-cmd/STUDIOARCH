@@ -135,6 +135,11 @@ export default function Admin() {
   useEffect(() => {
     console.log('🖼️ Gallery Hook - galleryFolders:', galleryFolders);
     console.log('🖼️ Gallery Hook - galleryLoading:', galleryLoading);
+    if (galleryFolders && galleryFolders.length > 0) {
+      console.log('🖼️ First folder:', galleryFolders[0]);
+      const flatImages = galleryFolders.flatMap((f: any) => f.gallery_items || []);
+      console.log('🖼️ Flattened images:', flatImages.length);
+    }
   }, [galleryFolders, galleryLoading]);
   const { data: videos, refetch: refetchVideos, loading: videosLoading } = useEventVideos();
   const { settings: contentSettings, loading: settingsLoading } = useContentSettings();
