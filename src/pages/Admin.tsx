@@ -609,8 +609,11 @@ export default function Admin() {
         setEditProjectData({});
         setEditingProjectImages([]);
         setSelectedEditFiles(null);
-        refetchProjects();
         showSuccessNotification('Project updated!');
+        // Wait a moment then refresh to ensure database is updated
+        setTimeout(() => {
+          refetchProjects();
+        }, 500);
       } else {
         throw new Error(result.error || 'Update failed');
       }
@@ -739,8 +742,11 @@ export default function Admin() {
     if (confirm('Are you sure you want to delete this project?')) {
       const result = await deleteProject('projects', id);
       if (result.success) {
-        refetchProjects();
         showSuccessNotification('Project deleted!');
+        // Wait a moment then refresh to ensure database is updated
+        setTimeout(() => {
+          refetchProjects();
+        }, 500);
       } else {
         showSuccessNotification('Failed to delete project');
       }
@@ -794,8 +800,11 @@ export default function Admin() {
         setSelectedProjectFiles(null);
         setFilesReadyToCreate(false);
         setIsUploadingProject(false);
-        refetchProjects();
         showSuccessNotification('✅ Project created successfully!');
+        // Wait a moment then refresh to ensure database is updated
+        setTimeout(() => {
+          refetchProjects();
+        }, 500);
       } else {
         throw new Error(result.error || 'Creation failed');
       }
