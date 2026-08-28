@@ -89,7 +89,28 @@ export function useContactMessages() {
 // Gallery hook
 export function useGallery() {
   const { data, loading, error, refetch } = useMariaDbTable('/gallery-items');
-  return { data: data || [], galleryFolders: [], loading, error, refetch };
+
+  // Convert flat array of items to nested folder structure
+  const galleryFolders = useMemo(() => {
+    if (!data || !Array.isArray(data)) return [];
+
+    const folderMap = {};
+    data.forEach(item => {
+      const folderId = item.folder_id || 'default';
+      if (!folderMap[folderId]) {
+        folderMap[folderId] = {
+          id: folderId,
+          name: item.folder_name || 'Portfolio',
+          gallery_items: []
+        };
+      }
+      folderMap[folderId].gallery_items.push(item);
+    });
+
+    return Object.values(folderMap);
+  }, [data]);
+
+  return { data: data || [], galleryFolders, loading, error, refetch };
 }
 
 // Content Settings hook
