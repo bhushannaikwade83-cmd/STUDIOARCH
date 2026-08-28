@@ -282,6 +282,7 @@ export default function Admin() {
 
   // Update gallery images when Supabase gallery data loads
   useEffect(() => {
+    console.log('🔄 Gallery useEffect running, galleryFolders:', galleryFolders?.length);
     if (galleryFolders && galleryFolders.length > 0) {
       const allImages: GalleryImage[] = [];
       galleryFolders.forEach((folder: any) => {
@@ -296,7 +297,10 @@ export default function Admin() {
           });
         }
       });
+      console.log('🔄 Setting gallery images:', allImages.length);
       setGalleryImages(allImages);
+    } else {
+      console.log('🔄 No gallery folders or empty');
     }
   }, [galleryFolders]);
 
