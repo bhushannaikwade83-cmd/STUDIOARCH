@@ -126,6 +126,30 @@ export default function Admin() {
   const [selectedEditFiles, setSelectedEditFiles] = useState<File[] | null>(null);
   const [isCompressingProjectFiles, setIsCompressingProjectFiles] = useState(false);
   const [isCompressingEditFiles, setIsCompressingEditFiles] = useState(false);
+  const [projectFilePreviewUrls, setProjectFilePreviewUrls] = useState<string[]>([]);
+  const [editFilePreviewUrls, setEditFilePreviewUrls] = useState<string[]>([]);
+
+  // Generate local preview thumbnails for pending (not-yet-uploaded) create-form files
+  useEffect(() => {
+    const urls = (selectedProjectFiles || []).map(f => URL.createObjectURL(f));
+    setProjectFilePreviewUrls(urls);
+    return () => { urls.forEach(u => URL.revokeObjectURL(u)); };
+  }, [selectedProjectFiles]);
+
+  // Generate local preview thumbnails for pending (not-yet-uploaded) edit-form files
+  useEffect(() => {
+    const urls = (selectedEditFiles || []).map(f => URL.createObjectURL(f));
+    setEditFilePreviewUrls(urls);
+    return () => { urls.forEach(u => URL.revokeObjectURL(u)); };
+  }, [selectedEditFiles]);
+
+  const handleRemoveSelectedProjectFile = (index: number) => {
+    setSelectedProjectFiles(prev => (prev || []).filter((_, i) => i !== index));
+  };
+
+  const handleRemoveSelectedEditFile = (index: number) => {
+    setSelectedEditFiles(prev => (prev || []).filter((_, i) => i !== index));
+  };
   const [filesReadyToCreate, setFilesReadyToCreate] = useState(false);
   const [filesReadyToUpdate, setFilesReadyToUpdate] = useState(false);
 
@@ -873,7 +897,7 @@ export default function Admin() {
   const handleSelectProjectFiles = async (files: FileList | null) => {
     if (!files) return;
 
-    const canAdd = 20 - newProjectImages.length;
+    const canAdd = 20 - newProjectImages.length - (selectedProjectFiles?.length || 0);
     if (files.length > canAdd) {
       showSuccessNotification(`Can only add ${canAdd} more files (limit: 20)`);
       return;
@@ -903,7 +927,7 @@ export default function Admin() {
       }
     }
 
-    setSelectedProjectFiles(processedFiles);
+    setSelectedProjectFiles(prev => [...(prev || []), ...processedFiles]);
     setIsCompressingProjectFiles(false);
     showSuccessNotification(`✅ ${processedFiles.length} file(s) ready. Click "Create Project" to upload and save.`);
   };
@@ -911,7 +935,7 @@ export default function Admin() {
   const handleSelectEditFiles = async (files: FileList | null) => {
     if (!files) return;
 
-    const canAdd = 20 - editingProjectImages.length;
+    const canAdd = 20 - editingProjectImages.length - (selectedEditFiles?.length || 0);
     if (files.length > canAdd) {
       showSuccessNotification(`Can only add ${canAdd} more files (limit: 20)`);
       return;
@@ -941,7 +965,7 @@ export default function Admin() {
       }
     }
 
-    setSelectedEditFiles(processedFiles);
+    setSelectedEditFiles(prev => [...(prev || []), ...processedFiles]);
     setIsCompressingEditFiles(false);
     showSuccessNotification(`✅ ${processedFiles.length} file(s) ready. Click "Save" to upload and update.`);
   };
@@ -1461,9 +1485,43 @@ export default function Admin() {
                             type="file"
                             multiple
                             accept="image/*,video/*"
-                            onChange={e => handleSelectProjectFiles(e.target.files)}
+                            onChange={e => { handleSelectProjectFiles(e.target.files); e.target.value = ''; }}
                             className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-stone-400 text-sm file:bg-white file:text-black file:px-2 file:py-1 file:border-0 file:rounded file:text-xs file:cursor-pointer file:mr-2 hover:file:bg-stone-200"
                           />
+                        </div>
+                      )}
+
+                      {/* Pending files preview - confirm before Create Project */}
+                      {isCompressingProjectFiles && (
+                        <div className="mt-3 text-xs text-stone-400 flex items-center gap-2">
+                          <span className="animate-pulse">📦 Compressing...</span>
+                        </div>
+                      )}
+                      {selectedProjectFiles && selectedProjectFiles.length > 0 && (
+                        <div className="mt-3">
+                          <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Selected Files ({selectedProjectFiles.length}) - Ready to Upload</label>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {selectedProjectFiles.map((file, idx) => (
+                              <div key={idx} className="relative group">
+                                <div className="bg-white/10 rounded overflow-hidden aspect-square flex items-center justify-center border border-green-500/40">
+                                  {file.type.startsWith('image/') ? (
+                                    <img src={projectFilePreviewUrls[idx]} alt="preview" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="flex flex-col items-center gap-2 text-stone-400"><FileText size={24} /> Video</div>
+                                  )}
+                                </div>
+                                <div className="absolute bottom-1 left-1 right-1 bg-black/70 text-[10px] text-white px-1 py-0.5 rounded truncate">{formatFileSize(file.size)}</div>
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  type="button"
+                                  onClick={() => handleRemoveSelectedProjectFile(idx)}
+                                  className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X size={12} className="text-white" />
+                                </motion.button>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1550,7 +1608,7 @@ export default function Admin() {
                                 type="file"
                                 multiple
                                 accept="image/*,video/*"
-                                onChange={(e) => handleSelectEditFiles(e.target.files)}
+                                onChange={(e) => { handleSelectEditFiles(e.target.files); e.target.value = ''; }}
                                 className="hidden"
                               />
                               <motion.div whileHover={{ scale: 1.02 }} className="px-4 py-2 bg-white/10 border border-white/20 rounded text-sm uppercase tracking-widest hover:bg-white/20 cursor-pointer text-center">
@@ -1565,6 +1623,40 @@ export default function Admin() {
                               >
                                 Upload Files
                               </motion.button>
+                            )}
+
+                            {/* Pending files preview - confirm before Save */}
+                            {isCompressingEditFiles && (
+                              <div className="mt-3 text-xs text-stone-400 flex items-center gap-2">
+                                <span className="animate-pulse">📦 Compressing...</span>
+                              </div>
+                            )}
+                            {selectedEditFiles && selectedEditFiles.length > 0 && (
+                              <div className="mt-3">
+                                <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Selected Files ({selectedEditFiles.length}) - Ready to Save</label>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                  {selectedEditFiles.map((file, idx) => (
+                                    <div key={idx} className="relative group">
+                                      <div className="bg-white/10 rounded overflow-hidden aspect-square flex items-center justify-center border border-green-500/40">
+                                        {file.type.startsWith('image/') ? (
+                                          <img src={editFilePreviewUrls[idx]} alt="preview" className="w-full h-full object-cover" />
+                                        ) : (
+                                          <div className="flex flex-col items-center gap-2 text-stone-400"><FileText size={24} /> Video</div>
+                                        )}
+                                      </div>
+                                      <div className="absolute bottom-1 left-1 right-1 bg-black/70 text-[10px] text-white px-1 py-0.5 rounded truncate">{formatFileSize(file.size)}</div>
+                                      <motion.button
+                                        whileHover={{ scale: 1.1 }}
+                                        type="button"
+                                        onClick={() => handleRemoveSelectedEditFile(idx)}
+                                        className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      >
+                                        <X size={12} className="text-white" />
+                                      </motion.button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             )}
                           </div>
                           <div className="flex gap-2">
