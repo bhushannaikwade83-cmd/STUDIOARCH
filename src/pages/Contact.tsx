@@ -3,7 +3,8 @@ import { ArrowLeft, Instagram, Linkedin, Youtube } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import NavMenu from '../components/NavMenu';
-import { useSupabaseTable, sendContactMessage } from '../hooks/useMariaDbData';
+import { useSupabaseTable } from '../hooks/useMariaDbData';
+import { createContactMessage, getContactInfo } from '../utils/api';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 
 const DEFAULT_CONTACT = {
@@ -51,16 +52,34 @@ export default function Contact() {
     }
 
     setFormStatus({ loading: true, success: false, error: '' });
-    const result = await sendContactMessage(formData.name, formData.email, formData.message);
-
-    if (result.success) {
+    try {
+      await createContactMessage({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        message: formData.message.trim(),
+      });
       setFormStatus({ loading: false, success: true, error: '' });
       setFormData({ name: '', email: '', message: '' });
       setTimeout(() => setFormStatus({ loading: false, success: false, error: '' }), 5000);
-    } else {
-      setFormStatus({ loading: false, success: false, error: result.error });
+    } catch (error) {
+      setFormStatus({ loading: false, success: false, error: error instanceof Error ? error.message : 'Failed to send message' });
     }
   };
+
+  // Fetch contact info from database
+  useEffect(() => {
+    const loadContactInfo = async () => {
+      try {
+        const data = await getContactInfo();
+        if (data && data.email) {
+          setInfo(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch contact info:', error);
+      }
+    };
+    loadContactInfo();
+  }, []);
 
   if (loading) {
     return <LoadingScreenWithText text="Loading Contact Info..." />;
