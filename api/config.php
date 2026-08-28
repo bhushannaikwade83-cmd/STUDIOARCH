@@ -19,17 +19,20 @@ $upload_dirs = [
   'videos' => '../uploads/videos',
 ];
 
-// CORS Headers
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-File-Name, X-File-Type');
-header('Content-Type: application/json');
+// ============ CRITICAL: CORS Headers MUST be first (before any output) ============
+// Set CORS headers for all requests - works with or without .htaccess
+header('Access-Control-Allow-Origin: *', true);
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS', true);
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-File-Name, X-File-Type, X-Requested-With', true);
+header('Access-Control-Max-Age: 86400', true);
+header('Content-Type: application/json', true);
 
 // Disable all caching - always get fresh data from database
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-header('Pragma: no-cache');
-header('Expires: 0');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0', true);
+header('Pragma: no-cache', true);
+header('Expires: 0', true);
 
+// Handle OPTIONS preflight requests immediately (before auth check)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   http_response_code(200);
   exit();
