@@ -248,6 +248,8 @@ if ($method === 'GET') {
   verifyToken();
 
   $id = $_GET['id'] ?? null;
+  error_log('[DEBUG] DELETE request - ID: ' . ($id ?? 'NULL'));
+
   if (!$id) {
     http_response_code(400);
     echo json_encode(['error' => 'ID required']);
@@ -255,8 +257,19 @@ if ($method === 'GET') {
   }
 
   $conn = getConnection();
+  error_log('[DEBUG] About to delete project with ID: ' . $id);
+
   $stmt = $conn->prepare('DELETE FROM projects WHERE id = ?');
+  if (!$stmt) {
+    error_log('[ERROR] Prepare failed: ' . $conn->error);
+    http_response_code(500);
+    echo json_encode(['error' => 'Prepare failed: ' . $conn->error]);
+    $conn->close();
+    exit();
+  }
+
   $stmt->bind_param('i', $id);
+  error_log('[DEBUG] Bound parameter ID: ' . $id);
 
   if ($stmt->execute()) {
     error_log('[SUCCESS] Project deleted. ID: ' . $id . ', Rows affected: ' . $stmt->affected_rows);

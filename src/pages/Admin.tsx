@@ -740,15 +740,27 @@ export default function Admin() {
 
   const handleDeleteProject = async (id: number) => {
     if (confirm('Are you sure you want to delete this project?')) {
-      const result = await deleteProject('projects', id);
-      if (result.success) {
-        showSuccessNotification('Project deleted!');
-        // Wait a moment then refresh to ensure database is updated
-        setTimeout(() => {
+      try {
+        const token = getToken();
+        const response = await fetch(`https://digitrixmedia.com/studioarch/api/projects?id=${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          showSuccessNotification('Project deleted!');
+          // Immediately remove from local state
           refetchProjects();
-        }, 500);
-      } else {
-        showSuccessNotification('Failed to delete project');
+        } else {
+          console.error('Delete failed:', result.error);
+          showSuccessNotification('Failed to delete: ' + (result.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Delete error:', error);
+        showSuccessNotification('Delete error: ' + (error instanceof Error ? error.message : 'Unknown'));
       }
     }
   };
