@@ -442,7 +442,9 @@ export default function Home() {
                             <motion.video
                               src={cover}
                               className="w-full h-full object-cover"
+                              autoPlay
                               muted
+                              loop
                               playsInline
                               preload="metadata"
                               animate={coverAnimation}

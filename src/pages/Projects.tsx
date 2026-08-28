@@ -236,7 +236,9 @@ export default function Projects() {
                         <motion.video
                           src={cover}
                           className="w-full h-full object-cover"
+                          autoPlay
                           muted
+                          loop
                           playsInline
                           preload="metadata"
                           animate={coverAnimation}
@@ -370,6 +372,9 @@ export default function Projects() {
                           <video
                             src={selectedProject.media[selectedImageIndex]}
                             controls
+                            autoPlay
+                            muted
+                            loop
                             controlsList="nodownload"
                             preload="metadata"
                             className="w-full h-full object-contain"
@@ -439,7 +444,9 @@ export default function Projects() {
                               <video
                                 src={img}
                                 className="w-full h-full object-cover"
+                                autoPlay
                                 muted
+                                loop
                                 playsInline
                                 preload="metadata"
                               />
