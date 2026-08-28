@@ -89,7 +89,7 @@ import { useProjects, useJournalPosts, useContactMessages, useGallery, useEventV
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
-import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo } from '../utils/api';
+import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, getContactInfo, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo } from '../utils/api';
 
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB - videos are uploaded uncompressed
 const MAX_PROJECT_FILES = 20; // images + videos combined, per project
@@ -212,9 +212,8 @@ export default function Admin() {
   }, []);
 
   // Contact
-  const [contactInfo, setContactInfo] = useState(() => {
-    try { const s = localStorage.getItem('contactInfo'); return s ? JSON.parse(s) : DEFAULT_CONTACT; } catch { return DEFAULT_CONTACT; }
-  });
+  const [contactInfo, setContactInfo] = useState(DEFAULT_CONTACT);
+  const [contactLoading, setContactLoading] = useState(true);
 
   // Journal
   const [journalPosts, setJournalPosts] = useState<JournalPost[]>([]);
@@ -228,6 +227,23 @@ export default function Admin() {
       setJournalPosts(supabaseJournalPosts as JournalPost[]);
     }
   }, [supabaseJournalPosts]);
+
+  // Fetch contact info from database
+  useEffect(() => {
+    const fetchContactInfo = async () => {
+      try {
+        const data = await getContactInfo();
+        if (data && data.email) {
+          setContactInfo(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch contact info:', error);
+      } finally {
+        setContactLoading(false);
+      }
+    };
+    fetchContactInfo();
+  }, []);
 
   // Projects
   const [editingProjectId, setEditingProjectId] = useState<number | null>(null);
