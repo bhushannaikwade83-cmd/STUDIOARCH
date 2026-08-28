@@ -80,11 +80,15 @@ function processUploadedFiles($fileInputName = 'files') {
 if ($method === 'GET') {
   // Get all projects
   $conn = getConnection();
+  error_log('[DEBUG] GET request - querying projects table');
+
   $result = $conn->query('SELECT * FROM projects ORDER BY created_at DESC');
 
   if (!$result) {
+    error_log('[ERROR] Query failed: ' . $conn->error);
     http_response_code(500);
-    echo json_encode(['error' => 'Query failed']);
+    echo json_encode(['error' => 'Query failed: ' . $conn->error]);
+    $conn->close();
     exit();
   }
 
@@ -93,6 +97,7 @@ if ($method === 'GET') {
     $projects[] = $row;
   }
 
+  error_log('[DEBUG] GET returning ' . count($projects) . ' projects');
   echo json_encode($projects);
   $conn->close();
 
