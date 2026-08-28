@@ -88,6 +88,14 @@ export default function Admin() {
     const stored = localStorage.getItem('projects');
     if (stored) console.log('📦 [Admin] localStorage.projects:', JSON.parse(stored));
   }, [supabaseProjects]);
+
+  // CRITICAL: Auto-fetch fresh projects from database every time user views projects section
+  useEffect(() => {
+    if (activeSection === 'projects') {
+      console.log('📂 [Admin] Viewing projects section - fetching fresh data from database');
+      refetchProjects();
+    }
+  }, [activeSection]);
   const { data: supabaseJournalPosts, refetch: refetchJournalPosts, loading: journalLoading } = useJournalPosts();
   const { data: contactMessages, refetch: refetchMessages, loading: messagesLoading } = useContactMessages();
   const { data: galleryFolders, refetch: refetchGallery, loading: galleryLoading } = useGallery();
