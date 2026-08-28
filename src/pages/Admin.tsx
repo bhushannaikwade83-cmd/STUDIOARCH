@@ -80,6 +80,14 @@ const DEFAULT_CONTACT = { email: 'inquiry@1studioarch.com', phone: '+44 (0) 20 1
 export default function Admin() {
   const navigate = useNavigate();
   const { data: supabaseProjects, refetch: refetchProjects, loading: projectsLoading } = useProjects();
+
+  // Debug: Check where project data comes from
+  useEffect(() => {
+    console.log('📦 [Admin] supabaseProjects:', supabaseProjects);
+    console.log('📦 [Admin] localStorage keys:', Object.keys(localStorage));
+    const stored = localStorage.getItem('projects');
+    if (stored) console.log('📦 [Admin] localStorage.projects:', JSON.parse(stored));
+  }, [supabaseProjects]);
   const { data: supabaseJournalPosts, refetch: refetchJournalPosts, loading: journalLoading } = useJournalPosts();
   const { data: contactMessages, refetch: refetchMessages, loading: messagesLoading } = useContactMessages();
   const { data: galleryFolders, refetch: refetchGallery, loading: galleryLoading } = useGallery();
