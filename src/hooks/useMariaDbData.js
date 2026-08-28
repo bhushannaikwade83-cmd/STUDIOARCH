@@ -50,7 +50,10 @@ export function useProjects() {
 
   // Parse images JSON field
   const parsedData = useMemo(() => {
-    return data.map(project => {
+    console.log('📊 [useProjects] Raw data from API:', data);
+    console.log('📊 [useProjects] Loading:', loading, 'Error:', error);
+
+    const parsed = data.map(project => {
       try {
         const images = project.images
           ? (typeof project.images === 'string' ? JSON.parse(project.images) : project.images)
@@ -61,6 +64,9 @@ export function useProjects() {
         return { ...project, images: null };
       }
     });
+
+    console.log('📊 [useProjects] Parsed data:', parsed);
+    return parsed;
   }, [data]);
 
   return { data: parsedData, loading, error, refetch };
