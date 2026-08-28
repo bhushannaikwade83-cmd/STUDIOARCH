@@ -569,6 +569,10 @@ export default function Admin() {
 
   const handleSaveProject = async (id: number) => {
     try {
+      console.log('🚀 Saving project', id);
+      console.log('📸 Existing images:', editingProjectImages);
+      console.log('📁 Selected files:', selectedEditFiles?.length || 0);
+
       // Create FormData for multipart request with files
       const formData = new FormData();
       formData.append('name', editProjectData.title || '');
@@ -579,10 +583,14 @@ export default function Admin() {
       formData.append('existingImages', JSON.stringify(editingProjectImages));
 
       // Add any pending files
-      if (selectedEditFiles) {
+      if (selectedEditFiles && selectedEditFiles.length > 0) {
+        console.log('📤 Adding', selectedEditFiles.length, 'new files to upload');
         for (let i = 0; i < selectedEditFiles.length; i++) {
           formData.append('files', selectedEditFiles[i]);
+          console.log('✅ Added file:', selectedEditFiles[i].name);
         }
+      } else {
+        console.log('⚠️ No new files to upload');
       }
 
       const token = getToken();
