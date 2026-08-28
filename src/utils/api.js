@@ -146,23 +146,29 @@ export async function updateContentSettings(data) {
   });
 }
 
-// Stub functions for gallery and events (not yet migrated from Supabase)
+// Gallery endpoints
 export async function getGallery() {
-  return [];
+  return apiCall('/gallery-items');
 }
 
 export async function createGalleryFolder(data) {
-  return { success: true, id: Date.now() };
+  return apiCall('/gallery', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 export async function deleteGalleryFolder(id) {
-  return { success: true };
+  return apiCall(`/gallery/${id}`, { method: 'DELETE' });
 }
 
 export async function createGalleryItem(data) {
-  return { success: true, id: Date.now() };
+  return apiCall('/gallery-items', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 export async function deleteGalleryItem(id) {
-  return { success: true };
+  return apiCall(`/gallery-items/${id}`, { method: 'DELETE' });
 }

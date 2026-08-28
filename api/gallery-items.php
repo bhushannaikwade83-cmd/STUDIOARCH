@@ -17,19 +17,20 @@ if ($method === 'GET') {
 } elseif ($method === 'POST') {
   requireAuth();
   $input = json_decode(file_get_contents('php://input'), true);
-  $folder_name = $input['folder_name'] ?? null;
+  $folder_id = $input['folder_id'] ?? null;
+  $folder_name = $input['folder_name'] ?? 'Portfolio';
   $image_url = $input['image_url'] ?? null;
   $title = $input['title'] ?? null;
 
-  if (!$folder_name || !$image_url) {
+  if (!$image_url) {
     http_response_code(400);
-    echo json_encode(['error' => 'Folder name and image URL required']);
+    echo json_encode(['error' => 'Image URL required']);
     exit();
   }
 
   $conn = getConnection();
-  $stmt = $conn->prepare('INSERT INTO gallery_items (folder_name, image_url, title) VALUES (?, ?, ?)');
-  $stmt->bind_param('sss', $folder_name, $image_url, $title);
+  $stmt = $conn->prepare('INSERT INTO gallery_items (folder_id, folder_name, image_url, title) VALUES (?, ?, ?, ?)');
+  $stmt->bind_param('isss', $folder_id, $folder_name, $image_url, $title);
 
   if ($stmt->execute()) {
     http_response_code(201);
