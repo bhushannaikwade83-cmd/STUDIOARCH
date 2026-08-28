@@ -123,7 +123,7 @@ if ($method === 'GET') {
 
   // Combine existing and new images
   $allImages = array_merge($existingImagesArray, $uploadedUrls);
-  $images = !empty($allImages) ? $allImages : null;
+  $images = !empty($allImages) ? $allImages : [];
 
   if (!$title) {
     http_response_code(400);
@@ -143,7 +143,7 @@ if ($method === 'GET') {
     exit();
   }
 
-  $images_json = $images ? json_encode($images) : null;
+  $images_json = json_encode($images ?: []);
   $stmt->bind_param('ssssss', $title, $location, $year, $category, $description, $images_json);
 
   if ($stmt->execute()) {
@@ -200,10 +200,10 @@ if ($method === 'GET') {
 
   // Combine existing and new images
   $allImages = array_merge($existingImagesArray, $uploadedUrls);
-  $images = !empty($allImages) ? $allImages : null;
+  $images = !empty($allImages) ? $allImages : [];
 
   $conn = getConnection();
-  $images_json = $images ? json_encode($images) : null;
+  $images_json = json_encode($images ?: []);
 
   error_log('[DEBUG] About to update project ' . $id . ' with title: ' . ($title ?? 'NULL') . ', images_json: ' . ($images_json ?? 'NULL'));
 
