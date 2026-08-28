@@ -65,10 +65,10 @@ function processUploadedFiles($fileInputName = 'files') {
   }
 
   $files = $_FILES[$fileInputName];
-  $fileCount = is_array($files['name']) ? count($files['name']) : 1;
 
-  if ($fileCount === 1 && is_string($files['name'])) {
-    // Single file
+  // A single file arrives as scalars; multiple files (sent as files[])
+  // arrive as parallel arrays. Normalise to the array shape.
+  if (is_string($files['name'])) {
     $files = [
       'name' => [$files['name']],
       'type' => [$files['type']],
@@ -77,6 +77,8 @@ function processUploadedFiles($fileInputName = 'files') {
       'error' => [$files['error']]
     ];
   }
+
+  error_log('[DEBUG] processUploadedFiles received ' . count($files['name']) . ' file(s): ' . implode(', ', $files['name']));
 
   for ($i = 0; $i < count($files['name']); $i++) {
     $fileName = $files['name'][$i];

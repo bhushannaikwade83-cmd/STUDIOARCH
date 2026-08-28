@@ -672,7 +672,9 @@ export default function Admin() {
       if (selectedEditFiles && selectedEditFiles.length > 0) {
         console.log('📤 Adding', selectedEditFiles.length, 'new files to upload');
         for (let i = 0; i < selectedEditFiles.length; i++) {
-          formData.append('files', selectedEditFiles[i]);
+          // The [] suffix is required: without it PHP keeps only the last
+          // file instead of building an array in $_FILES
+          formData.append('files[]', selectedEditFiles[i]);
           console.log('✅ Added file:', selectedEditFiles[i].name);
         }
       } else {
@@ -896,7 +898,9 @@ export default function Admin() {
       // Add any pending files
       if (selectedProjectFiles) {
         for (let i = 0; i < selectedProjectFiles.length; i++) {
-          formData.append('files', selectedProjectFiles[i]);
+          // The [] suffix is required: without it PHP keeps only the last
+          // file instead of building an array in $_FILES
+          formData.append('files[]', selectedProjectFiles[i]);
         }
       }
 
