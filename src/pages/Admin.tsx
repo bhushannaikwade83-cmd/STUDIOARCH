@@ -89,7 +89,7 @@ import { useProjects, useJournalPosts, useContactMessages, useGallery, useEventV
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
-import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, getContactInfo, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo } from '../utils/api';
+import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, getContactInfo, getGallery, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo } from '../utils/api';
 
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB - videos are uploaded uncompressed
 const MAX_PROJECT_FILES = 20; // images + videos combined, per project
@@ -486,8 +486,11 @@ export default function Admin() {
         });
 
         if (result.success) {
-          // Refresh gallery data from Supabase
-          // Will need to call fetch function
+          // Refresh gallery data
+          const galleryData = await getGallery();
+          if (galleryData && Array.isArray(galleryData)) {
+            setGalleryImages(galleryData);
+          }
           setNewImageUrl('');
           setNewImageTitle('');
           showSuccessNotification('Image added to gallery!');
@@ -539,6 +542,12 @@ export default function Admin() {
 
           if (dbResult.success) {
             console.log('✅ Database save successful, updating UI...');
+
+            // Refetch gallery data
+            const galleryData = await getGallery();
+            if (galleryData && Array.isArray(galleryData)) {
+              setGalleryImages(galleryData);
+            }
 
             setNewImageUrl('');
             setNewImageFile(null);
