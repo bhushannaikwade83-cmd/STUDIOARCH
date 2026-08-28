@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   exit();
 }
 
-// Helper: Verify JWT Token
+// Helper: Verify JWT Token - throws exception instead of dying
 function verifyToken() {
   global $jwt_secret;
 
@@ -58,16 +58,14 @@ function verifyToken() {
   error_log('[DEBUG] verifyToken - Auth header present: ' . ($auth_header ? 'YES' : 'NO'));
 
   if (!preg_match('/Bearer\s+(\S+)/', $auth_header, $matches)) {
-    http_response_code(401);
-    die(json_encode(['error' => 'Unauthorized - No token', 'header' => $auth_header]));
+    throw new Exception('No token provided');
   }
 
   $token = $matches[1];
   $parts = explode('.', $token);
 
   if (count($parts) !== 3) {
-    http_response_code(401);
-    die(json_encode(['error' => 'Unauthorized - Invalid token']));
+    throw new Exception('Invalid token format');
   }
 
   list($header, $payload, $signature) = $parts;
@@ -76,16 +74,14 @@ function verifyToken() {
   $valid_signature = base64_encode(hash_hmac('sha256', "$header.$payload", $jwt_secret, true));
 
   if ($signature !== $valid_signature) {
-    http_response_code(401);
-    die(json_encode(['error' => 'Unauthorized - Invalid signature']));
+    throw new Exception('Invalid signature');
   }
 
   // Decode and check expiration
   $decoded = json_decode(base64_decode($payload), true);
 
-  if ($decoded['exp'] < time()) {
-    http_response_code(401);
-    die(json_encode(['error' => 'Unauthorized - Token expired']));
+  if (!$decoded || ($decoded['exp'] ?? 0) < time()) {
+    throw new Exception('Token expired');
   }
 
   return $decoded;
@@ -103,5 +99,16 @@ function getConnection() {
   }
 
   return $conn;
+}
+
+// Helper: Safely verify token and return error response if invalid
+function requireAuth() {
+  try {
+    return verifyToken();
+  } catch (Exception $e) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Unauthorized: ' . $e->getMessage()]);
+    exit();
+  }
 }
 ?>

@@ -42,7 +42,14 @@ if ($method === 'GET') {
   $conn->close();
 
 } elseif ($method === 'DELETE') {
-  verifyToken();
+  try {
+    requireAuth();
+  } catch (Exception $e) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Authentication failed: ' . $e->getMessage()]);
+    exit();
+  }
+
   $id = $_GET['id'] ?? null;
 
   if (!$id) {
@@ -51,19 +58,28 @@ if ($method === 'GET') {
     exit();
   }
 
-  $conn = getConnection();
-  $stmt = $conn->prepare('DELETE FROM contact_messages WHERE id = ?');
-  $stmt->bind_param('i', $id);
+  try {
+    $conn = getConnection();
+    $stmt = $conn->prepare('DELETE FROM contact_messages WHERE id = ?');
+    if (!$stmt) {
+      throw new Exception('Prepare failed: ' . $conn->error);
+    }
 
-  if ($stmt->execute()) {
-    echo json_encode(['success' => true]);
-  } else {
+    $stmt->bind_param('i', $id);
+
+    if ($stmt->execute()) {
+      echo json_encode(['success' => true]);
+    } else {
+      http_response_code(500);
+      echo json_encode(['error' => 'Delete failed: ' . $stmt->error]);
+    }
+
+    $stmt->close();
+    $conn->close();
+  } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Delete failed']);
+    echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
   }
-
-  $stmt->close();
-  $conn->close();
 } else {
   http_response_code(405);
   echo json_encode(['error' => 'Method not allowed']);

@@ -176,7 +176,7 @@ if ($method === 'GET') {
   // Create project (requires auth)
   error_log('[DEBUG] POST - Auth header present: ' . (isset($_SERVER['HTTP_AUTHORIZATION']) ? 'YES' : 'NO'));
   try {
-    verifyToken();
+    requireAuth();
   } catch (Exception $e) {
     error_log('[ERROR] verifyToken failed: ' . $e->getMessage());
     throw $e;
@@ -248,7 +248,7 @@ if ($method === 'GET') {
 } elseif ($method === 'PUT') {
   // Update project
   try {
-    verifyToken();
+    requireAuth();
   } catch (Exception $e) {
     error_log('[ERROR] verifyToken failed in PUT: ' . $e->getMessage());
     throw $e;
@@ -355,7 +355,7 @@ if ($method === 'GET') {
 
 } elseif ($method === 'DELETE') {
   // Delete project
-  verifyToken();
+  requireAuth();
 
   $id = $_GET['id'] ?? null;
   error_log('[DEBUG] DELETE request - ID: ' . ($id ?? 'NULL'));

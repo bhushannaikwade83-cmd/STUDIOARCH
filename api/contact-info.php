@@ -12,7 +12,7 @@ if ($method === 'GET') {
   $conn->close();
 
 } elseif ($method === 'POST') {
-  verifyToken();
+  requireAuth();
   $input = json_decode(file_get_contents('php://input'), true);
 
   $conn = getConnection();

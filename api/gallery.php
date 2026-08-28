@@ -25,7 +25,7 @@ if ($method === 'GET') {
 
 } elseif ($method === 'POST') {
   // Create gallery item (requires auth)
-  verifyToken();
+  requireAuth();
 
   $input = json_decode(file_get_contents('php://input'), true);
   $folder_name = $input['folder_name'] ?? 'Portfolio';
@@ -63,7 +63,7 @@ if ($method === 'GET') {
 
 } elseif ($method === 'DELETE') {
   // Delete gallery item
-  verifyToken();
+  requireAuth();
 
   $id = $_GET['id'] ?? null;
   if (!$id) {

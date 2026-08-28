@@ -15,7 +15,7 @@ if ($method === 'GET') {
   $conn->close();
 
 } elseif ($method === 'POST') {
-  verifyToken();
+  requireAuth();
   $input = json_decode(file_get_contents('php://input'), true);
   $title = $input['title'] ?? null;
   $url = $input['url'] ?? null;
@@ -42,7 +42,7 @@ if ($method === 'GET') {
   $conn->close();
 
 } elseif ($method === 'DELETE') {
-  verifyToken();
+  requireAuth();
   $id = $_GET['id'] ?? null;
 
   if (!$id) {

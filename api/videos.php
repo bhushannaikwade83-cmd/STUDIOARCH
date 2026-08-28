@@ -25,7 +25,7 @@ if ($method === 'GET') {
 
 } elseif ($method === 'POST') {
   // Create video (requires auth)
-  verifyToken();
+  requireAuth();
 
   $input = json_decode(file_get_contents('php://input'), true);
   $title = $input['title'] ?? null;
@@ -62,7 +62,7 @@ if ($method === 'GET') {
 
 } elseif ($method === 'DELETE') {
   // Delete video
-  verifyToken();
+  requireAuth();
 
   $id = $_GET['id'] ?? null;
   if (!$id) {

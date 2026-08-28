@@ -25,7 +25,7 @@ if ($method === 'GET') {
 
 } elseif ($method === 'POST') {
   // Create/Update setting (requires auth)
-  verifyToken();
+  requireAuth();
 
   $input = json_decode(file_get_contents('php://input'), true);
   $key_name = $input['key_name'] ?? null;
