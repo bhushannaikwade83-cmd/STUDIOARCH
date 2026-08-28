@@ -3,6 +3,11 @@
 require_once 'config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
+error_log('[DEBUG] REQUEST_METHOD: ' . $method);
+error_log('[DEBUG] Content-Type: ' . ($_SERVER['CONTENT_TYPE'] ?? 'NOT SET'));
+error_log('[DEBUG] $_POST keys: ' . json_encode(array_keys($_POST)));
+error_log('[DEBUG] $_FILES keys: ' . json_encode(array_keys($_FILES)));
+error_log('[DEBUG] $_REQUEST keys: ' . json_encode(array_keys($_REQUEST)));
 
 // Helper: Process uploaded files and return URLs
 function processUploadedFiles($fileInputName = 'files') {
