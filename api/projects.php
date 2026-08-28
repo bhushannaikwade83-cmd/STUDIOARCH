@@ -16,8 +16,47 @@ error_log('[DEBUG] $_POST keys: ' . json_encode(array_keys($_POST)));
 error_log('[DEBUG] $_FILES keys: ' . json_encode(array_keys($_FILES)));
 error_log('[DEBUG] $_REQUEST keys: ' . json_encode(array_keys($_REQUEST)));
 
+// When a request body is bigger than post_max_size, PHP throws away BOTH
+// $_POST and $_FILES, leaving them empty. Without this check the request
+// looks like "no title was sent" instead of "your upload was too big".
+if (($method === 'POST' || $method === 'PUT') && empty($_POST) && empty($_FILES)) {
+  $contentLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+  if ($contentLength > 0) {
+    $postMax = ini_get('post_max_size');
+    $uploadMax = ini_get('upload_max_filesize');
+    error_log('[ERROR] Request body discarded by PHP. Content-Length: ' . $contentLength
+      . ' | post_max_size: ' . $postMax . ' | upload_max_filesize: ' . $uploadMax);
+    http_response_code(413);
+    echo json_encode([
+      'error' => 'Upload too large. The server currently accepts up to ' . $postMax
+        . ' per request (upload_max_filesize: ' . $uploadMax . '). '
+        . 'Increase post_max_size and upload_max_filesize in cPanel > MultiPHP INI Editor.',
+      'contentLength' => $contentLength,
+      'postMaxSize' => $postMax,
+      'uploadMaxFilesize' => $uploadMax
+    ]);
+    exit();
+  }
+}
+
+// Collects files that could not be saved, so the response can report them
+// instead of silently pretending every upload succeeded.
+$failedUploads = [];
+
 // Helper: Process uploaded files and return URLs
 function processUploadedFiles($fileInputName = 'files') {
+  global $failedUploads;
+
+  $uploadErrorMessages = [
+    UPLOAD_ERR_INI_SIZE   => 'File is larger than the server upload limit (php.ini upload_max_filesize)',
+    UPLOAD_ERR_FORM_SIZE  => 'File is larger than the form upload limit',
+    UPLOAD_ERR_PARTIAL    => 'File was only partially uploaded',
+    UPLOAD_ERR_NO_FILE    => 'No file was uploaded',
+    UPLOAD_ERR_NO_TMP_DIR => 'Server is missing a temporary folder',
+    UPLOAD_ERR_CANT_WRITE => 'Server failed to write the file to disk',
+    UPLOAD_ERR_EXTENSION  => 'A PHP extension blocked the upload',
+  ];
+
   $uploadedUrls = [];
 
   if (!isset($_FILES[$fileInputName])) {
@@ -39,12 +78,16 @@ function processUploadedFiles($fileInputName = 'files') {
   }
 
   for ($i = 0; $i < count($files['name']); $i++) {
+    $fileName = $files['name'][$i];
+
     if ($files['error'][$i] !== UPLOAD_ERR_OK) {
-      error_log('[ERROR] File upload error: ' . $files['error'][$i]);
+      $errCode = $files['error'][$i];
+      $errMsg = $uploadErrorMessages[$errCode] ?? ('Upload error code ' . $errCode);
+      error_log('[ERROR] File upload error for ' . $fileName . ': ' . $errMsg);
+      $failedUploads[] = ['name' => $fileName, 'reason' => $errMsg];
       continue;
     }
 
-    $fileName = $files['name'][$i];
     $fileType = $files['type'][$i];
     $tmpPath = $files['tmp_name'][$i];
     $fileSize = $files['size'][$i];
@@ -54,12 +97,14 @@ function processUploadedFiles($fileInputName = 'files') {
     $isVideo = strpos($fileType, 'video/') === 0;
 
     if (!$isImage && !$isVideo) {
-      error_log('[ERROR] Invalid file type: ' . $fileType);
+      error_log('[ERROR] Invalid file type for ' . $fileName . ': ' . $fileType);
+      $failedUploads[] = ['name' => $fileName, 'reason' => 'Only images and videos are allowed'];
       continue;
     }
 
     if ($fileSize > 500 * 1024 * 1024) {
-      error_log('[ERROR] File too large: ' . $fileSize);
+      error_log('[ERROR] File too large: ' . $fileName . ' (' . $fileSize . ' bytes)');
+      $failedUploads[] = ['name' => $fileName, 'reason' => 'File exceeds 500MB limit'];
       continue;
     }
 
@@ -69,10 +114,10 @@ function processUploadedFiles($fileInputName = 'files') {
       mkdir($uploadDir, 0777, true);
     }
 
-    // Generate unique filename
-    $timestamp = time();
+    // Generate unique filename (uniqid prevents collisions when several
+    // files land in the same second)
     $safeName = preg_replace('/[^a-zA-Z0-9.-]/', '_', $fileName);
-    $uniqueFileName = $timestamp . '-' . $safeName;
+    $uniqueFileName = time() . '-' . uniqid() . '-' . $safeName;
     $filePath = $uploadDir . '/' . $uniqueFileName;
 
     // Move uploaded file
@@ -80,9 +125,10 @@ function processUploadedFiles($fileInputName = 'files') {
       chmod($filePath, 0644);
       $webUrl = 'https://digitrixmedia.com/studioarch/uploads/projects/' . $uniqueFileName;
       $uploadedUrls[] = $webUrl;
-      error_log('[Upload] File saved: ' . $webUrl);
+      error_log('[Upload] File saved (' . ($isVideo ? 'video' : 'image') . '): ' . $webUrl);
     } else {
       error_log('[ERROR] Failed to move file: ' . $filePath);
+      $failedUploads[] = ['name' => $fileName, 'reason' => 'Server could not save the file'];
     }
   }
 
@@ -178,7 +224,8 @@ if ($method === 'GET') {
       'success' => true,
       'id' => $stmt->insert_id,
       'images' => $images,
-      'uploadedUrls' => $uploadedUrls
+      'uploadedUrls' => $uploadedUrls,
+      'failedUploads' => $failedUploads
     ]);
   } else {
     error_log('[ERROR] INSERT execute failed: ' . $stmt->error);
@@ -272,6 +319,7 @@ if ($method === 'GET') {
       'success' => true,
       'images' => $allImages,
       'uploadedUrls' => $uploadedUrls,
+      'failedUploads' => $failedUploads,
       'affectedRows' => $stmt->affected_rows
     ]);
   } else {

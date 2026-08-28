@@ -656,7 +656,15 @@ export default function Admin() {
         setEditProjectData({});
         setEditingProjectImages([]);
         setSelectedEditFiles(null);
-        showSuccessNotification('Project updated!');
+
+        const failed = result.failedUploads || [];
+        if (failed.length > 0) {
+          console.warn('⚠️ Some files failed to upload:', failed);
+          showSuccessNotification(`⚠️ Project updated, but ${failed.length} file(s) failed: ${failed[0].reason}`);
+        } else {
+          showSuccessNotification('Project updated!');
+        }
+
         // Wait a moment then refresh to ensure database is updated
         setTimeout(() => {
           refetchProjects();
@@ -863,7 +871,14 @@ export default function Admin() {
         setSelectedProjectFiles(null);
         setFilesReadyToCreate(false);
         setIsUploadingProject(false);
-        showSuccessNotification('✅ Project created successfully!');
+
+        const failed = result.failedUploads || [];
+        if (failed.length > 0) {
+          console.warn('⚠️ Some files failed to upload:', failed);
+          showSuccessNotification(`⚠️ Project saved, but ${failed.length} file(s) failed: ${failed[0].reason}`);
+        } else {
+          showSuccessNotification('✅ Project created successfully!');
+        }
         // Wait a moment then refresh to ensure database is updated
         setTimeout(() => {
           refetchProjects();
