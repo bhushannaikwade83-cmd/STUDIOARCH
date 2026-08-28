@@ -131,6 +131,11 @@ export default function Admin() {
   const { data: supabaseJournalPosts, refetch: refetchJournalPosts, loading: journalLoading } = useJournalPosts();
   const { data: contactMessages, refetch: refetchMessages, loading: messagesLoading } = useContactMessages();
   const { data: galleryFolders, refetch: refetchGallery, loading: galleryLoading } = useGallery();
+
+  useEffect(() => {
+    console.log('🖼️ Gallery Hook - galleryFolders:', galleryFolders);
+    console.log('🖼️ Gallery Hook - galleryLoading:', galleryLoading);
+  }, [galleryFolders, galleryLoading]);
   const { data: videos, refetch: refetchVideos, loading: videosLoading } = useEventVideos();
   const { settings: contentSettings, loading: settingsLoading } = useContentSettings();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
