@@ -169,5 +169,5 @@ export async function createGalleryItem(data) {
 }
 
 export async function deleteGalleryItem(id) {
-  return apiCall(`/gallery-items/${id}`, { method: 'DELETE' });
+  return apiCall(`/gallery-items?id=${id}`, { method: 'DELETE' });
 }

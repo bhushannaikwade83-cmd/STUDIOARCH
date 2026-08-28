@@ -130,7 +130,7 @@ export default function Admin() {
   }, [supabaseProjects]);
   const { data: supabaseJournalPosts, refetch: refetchJournalPosts, loading: journalLoading } = useJournalPosts();
   const { data: contactMessages, refetch: refetchMessages, loading: messagesLoading } = useContactMessages();
-  const { data: galleryFolders, refetch: refetchGallery, loading: galleryLoading } = useGallery();
+  const { galleryFolders, refetch: refetchGallery, loading: galleryLoading } = useGallery();
 
   useEffect(() => {
     console.log('🖼️ Gallery Hook - galleryFolders:', galleryFolders);
@@ -204,8 +204,8 @@ export default function Admin() {
   const [newVideoFile, setNewVideoFile] = useState<File | null>(null);
   const [newVideoTitle, setNewVideoTitle] = useState('');
   const [videoError, setVideoError] = useState('');
-  const [videoCompressing, setVideoCompressing] = useState(false);
-  const [videoCompressProgress, setVideoCompressProgress] = useState(0);
+  const [videoUploading, setVideoCompressing] = useState(false);
+  const [videoUploadProgress, setVideoCompressProgress] = useState(0);
 
   // Update eventVideos when Supabase data loads
   useEffect(() => {
@@ -367,7 +367,7 @@ export default function Admin() {
           console.log('✅ Upload successful, saving to database:', uploadResult.url);
 
           // Save to database
-          const dbResult = await insertVideo('event_videos', {
+          const dbResult = await createEventVideo({
             title: newVideoTitle.trim(),
             url: uploadResult.url,
             type: 'upload',
@@ -2211,13 +2211,13 @@ export default function Admin() {
                   ) : galleryFolders.flatMap((folder: any) => folder.gallery_items || []).map((image: any) => (
                     <motion.div key={image.id} whileHover={{ y: -5 }} className="bg-white/5 border border-white/10 rounded-lg overflow-hidden">
                       <div className="h-40 bg-stone-900 flex items-center justify-center overflow-hidden relative">
-                        <AdminImageDisplay src={image.url} alt={image.title} loading="lazy" className="w-full h-full object-cover" />
+                        <img src={image.image_url} alt={image.title} className="w-full h-full object-cover" />
                       </div>
                       <div className="p-4">
                         <p className="text-sm font-light mb-2 truncate">{image.title}</p>
-                        <p className="text-xs text-stone-500 mb-3 truncate">{image.url}</p>
+                        <p className="text-xs text-stone-500 mb-3 truncate">{image.image_url}</p>
                         <div className="flex gap-2">
-                          <motion.a whileHover={{ scale: 1.05 }} href={image.url} target="_blank" rel="noopener noreferrer" className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-xs uppercase tracking-widest hover:bg-white/20 flex items-center justify-center gap-1">
+                          <motion.a whileHover={{ scale: 1.05 }} href={image.image_url} target="_blank" rel="noopener noreferrer" className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-xs uppercase tracking-widest hover:bg-white/20 flex items-center justify-center gap-1">
                             <Download size={12} /> View
                           </motion.a>
                           <motion.button whileHover={{ scale: 1.05 }} onClick={() => handleRemoveImage(image.id)} className="flex-1 px-3 py-2 bg-red-500/20 border border-red-500/40 rounded text-xs uppercase tracking-widest hover:bg-red-500/30">Delete</motion.button>
@@ -2262,17 +2262,17 @@ export default function Admin() {
                     </div>
 
                     {/* Compression Progress */}
-                    {videoCompressing && (
+                    {videoUploading && (
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <Zap size={14} className="text-amber-500 animate-pulse" />
                           <span className="text-xs uppercase tracking-widest text-amber-500">Compressing video...</span>
-                          <span className="text-xs text-stone-500">{videoCompressProgress}%</span>
+                          <span className="text-xs text-stone-500">{videoUploadProgress}%</span>
                         </div>
                         <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-gradient-to-r from-amber-500 to-yellow-500 transition-all"
-                            style={{ width: `${videoCompressProgress}%` }}
+                            style={{ width: `${videoUploadProgress}%` }}
                           />
                         </div>
                       </div>
@@ -2284,15 +2284,15 @@ export default function Admin() {
                     {/* Submit Button */}
                     <motion.button
                       type="submit"
-                      disabled={videoCompressing}
-                      whileHover={{ scale: videoCompressing ? 1 : 1.02 }}
+                      disabled={videoUploading}
+                      whileHover={{ scale: videoUploading ? 1 : 1.02 }}
                       className={`w-full px-6 py-3 rounded font-light uppercase tracking-widest text-sm flex items-center justify-center gap-2 transition-colors ${
-                        videoCompressing
+                        videoUploading
                           ? 'bg-stone-600 text-stone-400 cursor-not-allowed'
                           : 'bg-white text-black hover:bg-stone-200'
                       }`}
                     >
-                      <Plus size={16} /> {videoCompressing ? 'Compressing...' : 'Add Video'}
+                      <Plus size={16} /> {videoUploading ? 'Uploading...' : 'Add Video'}
                     </motion.button>
                   </div>
                 </form>

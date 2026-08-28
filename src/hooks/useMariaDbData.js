@@ -92,22 +92,33 @@ export function useGallery() {
 
   // Convert flat array of items to nested folder structure
   const galleryFolders = useMemo(() => {
-    if (!data || !Array.isArray(data)) return [];
+    if (!data || !Array.isArray(data)) {
+      console.log('🖼️ Hook: No data or not array', data);
+      return [];
+    }
 
+    console.log('🖼️ Hook: Raw data array:', data);
     const folderMap = {};
-    data.forEach(item => {
+    data.forEach((item, idx) => {
       const folderId = item.folder_id || 'default';
+      console.log(`🖼️ Processing item ${idx}:`, { folderId, name: item.folder_name, id: item.id });
       if (!folderMap[folderId]) {
+        console.log(`🖼️ Creating new folder for id=${folderId}`);
         folderMap[folderId] = {
           id: folderId,
           name: item.folder_name || 'Portfolio',
           gallery_items: []
         };
       }
+      console.log(`🖼️ Before push - folderMap[${folderId}].gallery_items:`, folderMap[folderId].gallery_items);
       folderMap[folderId].gallery_items.push(item);
+      console.log(`🖼️ After push - folderMap[${folderId}].gallery_items:`, folderMap[folderId].gallery_items);
     });
 
-    return Object.values(folderMap);
+    console.log('🖼️ Final folderMap:', folderMap);
+    const result = Object.values(folderMap);
+    console.log('🖼️ Hook: Converted folders:', result);
+    return result;
   }, [data]);
 
   return { data: data || [], galleryFolders, loading, error, refetch };
@@ -134,8 +145,16 @@ export function useContactInfo() {
     try {
       console.log('📥 [API] Fetching contact info');
       const result = await apiCall('/contact-info');
-      if (result && result.length > 0) {
-        setContactInfo(result[0]);
+      console.log('📥 [API] Contact info response:', result);
+      // Handle both object and array responses
+      if (result) {
+        const data = Array.isArray(result) ? result[0] : result;
+        if (data && data.email) {
+          console.log('✅ [API] Updating contact info from database:', data);
+          setContactInfo(data);
+        } else {
+          console.warn('⚠️ [API] No valid contact info, using defaults');
+        }
       }
     } catch (err) {
       console.error('⚠️ [API] Using default contact info:', err.message);

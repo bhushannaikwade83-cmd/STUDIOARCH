@@ -12,7 +12,10 @@ export default function Events() {
 
   // Update videos when Supabase data is loaded
   useEffect(() => {
+    console.log('🎥 Events - supabaseVideos:', supabaseVideos);
     if (supabaseVideos && supabaseVideos.length > 0) {
+      console.log('🎥 Events - First video:', supabaseVideos[0]);
+      console.log('🎥 Events - Video types:', supabaseVideos.map((v: any) => ({ id: v.id, type: v.type, title: v.title })));
       setVideos(supabaseVideos);
     }
   }, [supabaseVideos]);
@@ -74,11 +77,11 @@ export default function Events() {
         ) : (
           <div className="space-y-16">
             {/* YouTube Videos Section */}
-            {videos.filter(v => v.type === 'youtube').length > 0 && (
+            {videos.filter(v => v.is_youtube === '1' || v.is_youtube === 1).length > 0 && (
               <div>
                 <h2 className="text-3xl font-light mb-8">YouTube Videos</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {videos.filter(v => v.type === 'youtube').map((video, idx) => (
+                  {videos.filter(v => v.is_youtube === '1' || v.is_youtube === 1).map((video, idx) => (
                     <motion.div
                       key={video.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -109,11 +112,11 @@ export default function Events() {
             )}
 
             {/* Uploaded Videos Section */}
-            {videos.filter(v => v.type === 'upload').length > 0 && (
+            {videos.filter(v => v.is_youtube === '0' || v.is_youtube === 0).length > 0 && (
               <div>
                 <h2 className="text-3xl font-light mb-8">Videos</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {videos.filter(v => v.type === 'upload').map((video, idx) => {
+                  {videos.filter(v => v.is_youtube === '0' || v.is_youtube === 0).map((video, idx) => {
                     // Use URL from database (local cPanel server URL)
                     const videoUrl = video.url;
 

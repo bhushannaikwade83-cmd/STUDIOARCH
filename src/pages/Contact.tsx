@@ -3,7 +3,6 @@ import { ArrowLeft, Instagram, Linkedin, Youtube } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import NavMenu from '../components/NavMenu';
-import { useSupabaseTable } from '../hooks/useMariaDbData';
 import { createContactMessage, getContactInfo } from '../utils/api';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 
@@ -29,20 +28,9 @@ function getMapEmbedUrl(storedEmbedUrl: string | null, mapsUrl: string): string 
 }
 
 export default function Contact() {
-  const { data: contactSettings, loading, error } = useSupabaseTable('contact_info', { select: '*' });
   const [info, setInfo] = useState(DEFAULT_CONTACT);
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
   const [formStatus, setFormStatus] = useState({ loading: false, success: false, error: '' });
-
-  // Update contact info when Supabase data is loaded
-  useEffect(() => {
-    if (contactSettings && contactSettings.length > 0) {
-      const contactData = contactSettings[0];
-      console.log('📍 Contact data loaded:', contactData);
-      console.log('📍 Maps URL:', contactData.maps_url);
-      setInfo(contactData);
-    }
-  }, [contactSettings]);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,31 +58,21 @@ export default function Contact() {
   useEffect(() => {
     const loadContactInfo = async () => {
       try {
+        console.log('📍 Contact: Fetching contact info...');
         const data = await getContactInfo();
+        console.log('📍 Contact: API response:', data);
         if (data && data.email) {
+          console.log('📍 Contact: Setting info from database:', data);
           setInfo(data);
+        } else {
+          console.log('📍 Contact: No email in response, using defaults');
         }
       } catch (error) {
-        console.error('Failed to fetch contact info:', error);
+        console.error('❌ Contact: Failed to fetch contact info:', error);
       }
     };
     loadContactInfo();
   }, []);
-
-  if (loading) {
-    return <LoadingScreenWithText text="Loading Contact Info..." />;
-  }
-
-  if (error) {
-    return (
-      <div className="bg-black text-white min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">Failed to load contact info</p>
-          <p className="text-stone-400 text-sm">{error}</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-black text-white min-h-screen">

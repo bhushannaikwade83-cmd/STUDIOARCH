@@ -25,9 +25,13 @@ export default function Home() {
   // Fetch projects from Supabase
   const { data: supabaseProjects, loading: projectsLoading } = useProjects();
   // Fetch carousel images from gallery with refetch
-  const { data: galleryFolders, refetch: refetchGallery } = useGallery();
+  const { galleryFolders, refetch: refetchGallery } = useGallery();
   // Fetch contact info from Supabase
   const { contactInfo } = useContactInfo();
+
+  useEffect(() => {
+    console.log('🏠 Home - contactInfo:', contactInfo);
+  }, [contactInfo]);
 
   const [projects, setProjects] = useState<typeof PROJECTS>([]);
   const [carouselImages, setCarouselImages] = useState<string[]>([]);
@@ -54,11 +58,13 @@ export default function Home() {
 
   // Extract gallery images for carousel from database
   useEffect(() => {
+    console.log('🏠 Home - galleryFolders:', galleryFolders);
     if (galleryFolders && Array.isArray(galleryFolders)) {
       const images = galleryFolders.flatMap((folder: any) =>
         (folder.gallery_items || []).map((item: any) => item.image_url)
       );
 
+      console.log('🏠 Home - Extracted carousel images:', images);
       if (images.length > 0) {
         setCarouselImages(images);
       }

@@ -13,7 +13,6 @@ interface AdminImageDisplayProps {
  * Shows placeholder if image fails to load
  */
 export function AdminImageDisplay({ src, alt, className = 'w-full h-full object-cover', loading = 'eager' }: AdminImageDisplayProps) {
-  const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
   if (!src) {
@@ -26,13 +25,6 @@ export function AdminImageDisplay({ src, alt, className = 'w-full h-full object-
 
   return (
     <>
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-stone-800">
-          <div className="animate-pulse">
-            <ImageIcon size={24} className="text-stone-600" />
-          </div>
-        </div>
-      )}
       {hasError && (
         <div className="w-full h-full flex items-center justify-center bg-stone-800">
           <div className="text-center">
@@ -41,19 +33,19 @@ export function AdminImageDisplay({ src, alt, className = 'w-full h-full object-
           </div>
         </div>
       )}
-      <img
-        src={src}
-        alt={alt}
-        className={className}
-        loading={loading}
-        onLoad={() => setIsLoading(false)}
-        onError={() => {
-          console.error('Image failed to load:', src);
-          setIsLoading(false);
-          setHasError(true);
-        }}
-        style={{ display: hasError || isLoading ? 'none' : 'block' }}
-      />
+      {!hasError && (
+        <img
+          src={src}
+          alt={alt}
+          className={className}
+          loading={loading}
+          crossOrigin="anonymous"
+          onError={() => {
+            console.error('❌ Image failed to load:', src);
+            setHasError(true);
+          }}
+        />
+      )}
     </>
   );
 }
