@@ -260,8 +260,7 @@ export default function Admin() {
     { id: 4, url: '/architecture-4.jpg', title: 'Architecture 4' },
     { id: 5, url: '/architecture-5.jpg', title: 'Architecture 5' },
   ];
-  // Gallery - Using Supabase
-  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  // Gallery - Using database hook
   const [newImageUrl, setNewImageUrl] = useState('');
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
   const [newImageTitle, setNewImageTitle] = useState('');
@@ -280,29 +279,6 @@ export default function Admin() {
   const editFormFileCount =
     editingProjectImages.length + editingProjectVideos.length + (selectedEditFiles?.length || 0);
 
-  // Update gallery images when Supabase gallery data loads
-  useEffect(() => {
-    console.log('🔄 Gallery useEffect running, galleryFolders:', galleryFolders?.length);
-    if (galleryFolders && galleryFolders.length > 0) {
-      const allImages: GalleryImage[] = [];
-      galleryFolders.forEach((folder: any) => {
-        if (folder.gallery_items) {
-          folder.gallery_items.forEach((item: any) => {
-            allImages.push({
-              id: item.id,
-              url: item.image_url,
-              title: item.title,
-              folderId: folder.id
-            });
-          });
-        }
-      });
-      console.log('🔄 Setting gallery images:', allImages.length);
-      setGalleryImages(allImages);
-    } else {
-      console.log('🔄 No gallery folders or empty');
-    }
-  }, [galleryFolders]);
 
   const extractYoutubeId = (url: string): string | null => {
     const patterns = [/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/, /^([a-zA-Z0-9_-]{11})$/];
@@ -811,8 +787,8 @@ export default function Admin() {
       // Delete from database
       const result = await deleteGalleryItem(id);
       if (result.success) {
-        // Remove from UI
-        setGalleryImages(prev => prev.filter(img => img.id !== id));
+        // Refetch gallery to sync
+        refetchGallery();
         showSuccessNotification('Image deleted!');
         // Refetch to sync
         await refetchGallery();
@@ -2217,12 +2193,12 @@ export default function Admin() {
                 </form>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {galleryImages.length === 0 ? (
+                  {galleryFolders.length === 0 || galleryFolders.every((f: any) => !f.gallery_items?.length) ? (
                     <div className="col-span-full bg-white/5 border border-white/10 rounded-lg p-8 text-center text-stone-500">
                       <Image size={36} className="mx-auto mb-3 opacity-30" />
                       <p className="text-sm uppercase tracking-widest">No images added yet</p>
                     </div>
-                  ) : galleryImages.map(image => (
+                  ) : galleryFolders.flatMap((folder: any) => folder.gallery_items || []).map((image: any) => (
                     <motion.div key={image.id} whileHover={{ y: -5 }} className="bg-white/5 border border-white/10 rounded-lg overflow-hidden">
                       <div className="h-40 bg-stone-900 flex items-center justify-center overflow-hidden relative">
                         <AdminImageDisplay src={image.url} alt={image.title} loading="lazy" className="w-full h-full object-cover" />
