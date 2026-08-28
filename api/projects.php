@@ -43,7 +43,8 @@ if (($method === 'POST' || $method === 'PUT') && empty($_POST) && empty($_FILES)
 // instead of silently pretending every upload succeeded.
 $failedUploads = [];
 
-// Helper: Process uploaded files and return URLs
+// Helper: Process uploaded files, returning image and video URLs separately
+// as ['images' => [...], 'videos' => [...]]
 function processUploadedFiles($fileInputName = 'files') {
   global $failedUploads;
 
@@ -57,7 +58,7 @@ function processUploadedFiles($fileInputName = 'files') {
     UPLOAD_ERR_EXTENSION  => 'A PHP extension blocked the upload',
   ];
 
-  $uploadedUrls = [];
+  $uploadedUrls = ['images' => [], 'videos' => []];
 
   if (!isset($_FILES[$fileInputName])) {
     return $uploadedUrls;
@@ -108,8 +109,9 @@ function processUploadedFiles($fileInputName = 'files') {
       continue;
     }
 
-    // Create upload directory
-    $uploadDir = __DIR__ . '/../uploads/projects';
+    // Videos and images live in separate folders
+    $subFolder = $isVideo ? 'videos' : 'projects';
+    $uploadDir = __DIR__ . '/../uploads/' . $subFolder;
     if (!is_dir($uploadDir)) {
       mkdir($uploadDir, 0777, true);
     }
@@ -123,8 +125,8 @@ function processUploadedFiles($fileInputName = 'files') {
     // Move uploaded file
     if (move_uploaded_file($tmpPath, $filePath)) {
       chmod($filePath, 0644);
-      $webUrl = 'https://digitrixmedia.com/studioarch/uploads/projects/' . $uniqueFileName;
-      $uploadedUrls[] = $webUrl;
+      $webUrl = 'https://digitrixmedia.com/studioarch/uploads/' . $subFolder . '/' . $uniqueFileName;
+      $uploadedUrls[$isVideo ? 'videos' : 'images'][] = $webUrl;
       error_log('[Upload] File saved (' . ($isVideo ? 'video' : 'image') . '): ' . $webUrl);
     } else {
       error_log('[ERROR] Failed to move file: ' . $filePath);
@@ -165,7 +167,7 @@ if ($method === 'GET') {
   }
 
   error_log('[DEBUG] GET returning ' . count($projects) . ' projects');
-  echo json_encode($projects);
+  echo json_encode($projects, JSON_UNESCAPED_SLASHES);
   $conn->close();
 
 } elseif ($method === 'POST') {
@@ -185,16 +187,18 @@ if ($method === 'GET') {
   $category = $_POST['category'] ?? null;
   $description = $_POST['description'] ?? null;
 
-  // Get existing image URLs from form data
+  // Get existing URLs from form data
   $existingImages = $_POST['existingImages'] ?? null;
   $existingImagesArray = $existingImages ? json_decode($existingImages, true) : [];
+  $existingVideos = $_POST['existingVideos'] ?? null;
+  $existingVideosArray = $existingVideos ? json_decode($existingVideos, true) : [];
 
-  // Process newly uploaded files
+  // Process newly uploaded files (returns images and videos separately)
   $uploadedUrls = processUploadedFiles('files');
 
-  // Combine existing and new images
-  $allImages = array_merge($existingImagesArray, $uploadedUrls);
-  $images = !empty($allImages) ? $allImages : [];
+  // Combine existing and new, keeping images and videos in their own columns
+  $images = array_merge($existingImagesArray, $uploadedUrls['images']);
+  $videos = array_merge($existingVideosArray, $uploadedUrls['videos']);
 
   if (!$title) {
     http_response_code(400);
@@ -203,7 +207,7 @@ if ($method === 'GET') {
   }
 
   $conn = getConnection();
-  $sql = 'INSERT INTO projects (title, location, year, category, description, images, display_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 0, NOW(), NOW())';
+  $sql = 'INSERT INTO projects (title, location, year, category, description, images, videos, display_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NOW(), NOW())';
 
   $stmt = $conn->prepare($sql);
 
@@ -214,8 +218,10 @@ if ($method === 'GET') {
     exit();
   }
 
-  $images_json = json_encode($images ?: []);
-  $stmt->bind_param('ssssss', $title, $location, $year, $category, $description, $images_json);
+  // JSON_UNESCAPED_SLASHES keeps URLs readable in the database
+  $images_json = json_encode($images ?: [], JSON_UNESCAPED_SLASHES);
+  $videos_json = json_encode($videos ?: [], JSON_UNESCAPED_SLASHES);
+  $stmt->bind_param('sssssss', $title, $location, $year, $category, $description, $images_json, $videos_json);
 
   if ($stmt->execute()) {
     error_log('[SUCCESS] Project created with ID: ' . $stmt->insert_id);
@@ -224,9 +230,10 @@ if ($method === 'GET') {
       'success' => true,
       'id' => $stmt->insert_id,
       'images' => $images,
+      'videos' => $videos,
       'uploadedUrls' => $uploadedUrls,
       'failedUploads' => $failedUploads
-    ]);
+    ], JSON_UNESCAPED_SLASHES);
   } else {
     error_log('[ERROR] INSERT execute failed: ' . $stmt->error);
     http_response_code(500);
@@ -280,26 +287,38 @@ if ($method === 'GET') {
 
   error_log('[DEBUG] Update values - title: ' . $title . ', location: ' . $location);
 
-  // Get existing images from DB (not from form data which might be empty)
-  $existingImagesArray = [];
-  if (!empty($existingProject['images'])) {
-    $existingImagesArray = json_decode($existingProject['images'], true) ?: [];
+  // Prefer the lists the client sent (they reflect removals made in the UI);
+  // fall back to what is already stored when the client sent nothing.
+  if (isset($_POST['existingImages'])) {
+    $existingImagesArray = json_decode($_POST['existingImages'], true) ?: [];
+  } else {
+    $existingImagesArray = json_decode($existingProject['images'] ?? '[]', true) ?: [];
   }
 
-  error_log('[DEBUG] Existing images: ' . json_encode($existingImagesArray));
+  if (isset($_POST['existingVideos'])) {
+    $existingVideosArray = json_decode($_POST['existingVideos'], true) ?: [];
+  } else {
+    $existingVideosArray = json_decode($existingProject['videos'] ?? '[]', true) ?: [];
+  }
 
-  // Process newly uploaded files
+  error_log('[DEBUG] Existing images: ' . count($existingImagesArray) . ', videos: ' . count($existingVideosArray));
+
+  // Process newly uploaded files (images and videos come back separately)
   $uploadedUrls = processUploadedFiles('files');
-  error_log('[DEBUG] Newly uploaded URLs: ' . json_encode($uploadedUrls));
+  error_log('[DEBUG] Newly uploaded - images: ' . count($uploadedUrls['images']) . ', videos: ' . count($uploadedUrls['videos']));
 
-  // Combine existing and new images (APPEND, don't replace)
-  $allImages = array_merge($existingImagesArray, $uploadedUrls);
-  $images_json = json_encode($allImages ?: []);
+  // Combine existing and new (APPEND, don't replace)
+  $allImages = array_merge($existingImagesArray, $uploadedUrls['images']);
+  $allVideos = array_merge($existingVideosArray, $uploadedUrls['videos']);
 
-  error_log('[DEBUG] About to update project ' . $id . ' with title: ' . $title . ', total images: ' . count($allImages));
+  // JSON_UNESCAPED_SLASHES keeps URLs readable in the database
+  $images_json = json_encode($allImages ?: [], JSON_UNESCAPED_SLASHES);
+  $videos_json = json_encode($allVideos ?: [], JSON_UNESCAPED_SLASHES);
+
+  error_log('[DEBUG] About to update project ' . $id . ' - images: ' . count($allImages) . ', videos: ' . count($allVideos));
 
   $stmt = $conn->prepare(
-    'UPDATE projects SET title = ?, location = ?, year = ?, category = ?, description = ?, images = ?, updated_at = NOW() WHERE id = ?'
+    'UPDATE projects SET title = ?, location = ?, year = ?, category = ?, description = ?, images = ?, videos = ?, updated_at = NOW() WHERE id = ?'
   );
 
   if (!$stmt) {
@@ -311,17 +330,18 @@ if ($method === 'GET') {
   }
 
   error_log('[DEBUG] Binding params - title: ' . $title . ', id: ' . $id);
-  $stmt->bind_param('ssssssi', $title, $location, $year, $category, $description, $images_json, $id);
+  $stmt->bind_param('sssssssi', $title, $location, $year, $category, $description, $images_json, $videos_json, $id);
 
   if ($stmt->execute()) {
     error_log('[DEBUG] Update successful. Rows affected: ' . $stmt->affected_rows);
     echo json_encode([
       'success' => true,
       'images' => $allImages,
+      'videos' => $allVideos,
       'uploadedUrls' => $uploadedUrls,
       'failedUploads' => $failedUploads,
       'affectedRows' => $stmt->affected_rows
-    ]);
+    ], JSON_UNESCAPED_SLASHES);
   } else {
     error_log('[ERROR] Execute failed: ' . $stmt->error);
     http_response_code(500);

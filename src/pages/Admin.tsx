@@ -5,6 +5,42 @@ import { LogOut, Menu, X, Home, Settings, Edit2, Image, FileText, ArrowLeft, You
 import { compressImage, compressVideo, formatFileSize, shouldCompress } from '../utils/compression';
 import { login, logout as logoutAuth, isAuthenticated as checkAuth, getToken } from '../utils/auth';
 
+// Send FormData with real upload progress. fetch() cannot report upload
+// progress, so large video uploads look frozen - XHR exposes it.
+const postFormDataWithProgress = (
+  url: string,
+  formData: FormData,
+  token: string | null,
+  onProgress?: (percent: number, loaded: number, total: number) => void
+): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress?.(percent, event.loaded, event.total);
+      }
+    };
+
+    xhr.onload = () => {
+      try {
+        resolve(JSON.parse(xhr.responseText));
+      } catch {
+        reject(new Error(`Server returned an unreadable response (HTTP ${xhr.status})`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.ontimeout = () => reject(new Error('Upload timed out'));
+    xhr.timeout = 30 * 60 * 1000; // 30 minutes for large videos
+
+    xhr.send(formData);
+  });
+};
+
 // Backend upload function
 const uploadToBackend = async (file: File, fileType: string, onProgress?: (progress: number) => void) => {
   try {
@@ -128,6 +164,7 @@ export default function Admin() {
   const [selectedEditFiles, setSelectedEditFiles] = useState<File[] | null>(null);
   const [isCompressingProjectFiles, setIsCompressingProjectFiles] = useState(false);
   const [isCompressingEditFiles, setIsCompressingEditFiles] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [projectFilePreviewUrls, setProjectFilePreviewUrls] = useState<string[]>([]);
   const [editFilePreviewUrls, setEditFilePreviewUrls] = useState<string[]>([]);
 
@@ -201,6 +238,7 @@ export default function Admin() {
   const [editProjectData, setEditProjectData] = useState<Partial<Project>>({});
   const [newProjectData, setNewProjectData] = useState<Partial<Project>>({ name: '', location: '', year: new Date().getFullYear().toString(), category: '', description: '', images: [] });
   const [newProjectImages, setNewProjectImages] = useState<string[]>([]);
+  const [newProjectVideos, setNewProjectVideos] = useState<string[]>([]);
 
   // Gallery Images - Pre-populated with existing public images
   const DEFAULT_GALLERY: GalleryImage[] = [
@@ -219,6 +257,7 @@ export default function Admin() {
   const [imageCompressing, setImageCompressing] = useState(false);
   const [imageCompressProgress, setImageCompressProgress] = useState(0);
   const [editingProjectImages, setEditingProjectImages] = useState<string[]>([]);
+  const [editingProjectVideos, setEditingProjectVideos] = useState<string[]>([]);
   const [newProjectImageUrl, setNewProjectImageUrl] = useState('');
   const [newProjectImageFile, setNewProjectImageFile] = useState<File | null>(null);
   // Update gallery images when Supabase gallery data loads
@@ -614,8 +653,9 @@ export default function Admin() {
 
   const handleSaveProject = async (id: number) => {
     try {
+      setIsUploadingEdit(true);
       console.log('🚀 Saving project', id);
-      console.log('📸 Existing images:', editingProjectImages);
+      console.log('📸 Existing images:', editingProjectImages, 'videos:', editingProjectVideos);
       console.log('📁 Selected files:', selectedEditFiles?.length || 0);
 
       // Create FormData for multipart request with files
@@ -626,6 +666,7 @@ export default function Admin() {
       formData.append('category', editProjectData.category || '');
       formData.append('description', editProjectData.description || '');
       formData.append('existingImages', JSON.stringify(editingProjectImages));
+      formData.append('existingVideos', JSON.stringify(editingProjectVideos));
 
       // Add any pending files
       if (selectedEditFiles && selectedEditFiles.length > 0) {
@@ -641,20 +682,22 @@ export default function Admin() {
       const token = getToken();
       // Use POST instead of PUT because PHP doesn't auto-parse multipart data for PUT!
       // Add _method=PUT to indicate this is an update
-      const response = await fetch(`https://digitrixmedia.com/studioarch/api/projects?id=${id}&_method=PUT`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const result = await response.json();
+      const result = await postFormDataWithProgress(
+        `https://digitrixmedia.com/studioarch/api/projects?id=${id}&_method=PUT`,
+        formData,
+        token,
+        (percent, loaded, total) => {
+          setUploadProgress(percent);
+          console.log(`⬆️ Upload ${percent}% (${formatFileSize(loaded)} / ${formatFileSize(total)})`);
+        }
+      );
+      setUploadProgress(0);
 
       if (result.success) {
         setEditingProjectId(null);
         setEditProjectData({});
         setEditingProjectImages([]);
+        setEditingProjectVideos([]);
         setSelectedEditFiles(null);
 
         const failed = result.failedUploads || [];
@@ -675,6 +718,9 @@ export default function Admin() {
     } catch (error) {
       console.error('❌ Project update failed:', error);
       showSuccessNotification('Failed to update project: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsUploadingEdit(false);
+      setUploadProgress(0);
     }
   };
 
@@ -835,6 +881,8 @@ export default function Admin() {
     }
 
     try {
+      setIsUploadingProject(true);
+
       // Create FormData for multipart request with files
       const formData = new FormData();
       formData.append('name', newProjectData.name.trim());
@@ -843,6 +891,7 @@ export default function Admin() {
       formData.append('category', newProjectData.category?.trim() || '');
       formData.append('description', newProjectData.description?.trim() || '');
       formData.append('existingImages', JSON.stringify(newProjectImages));
+      formData.append('existingVideos', JSON.stringify(newProjectVideos));
 
       // Add any pending files
       if (selectedProjectFiles) {
@@ -852,15 +901,16 @@ export default function Admin() {
       }
 
       const token = getToken();
-      const response = await fetch('https://digitrixmedia.com/studioarch/api/projects', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const result = await response.json();
+      const result = await postFormDataWithProgress(
+        'https://digitrixmedia.com/studioarch/api/projects',
+        formData,
+        token,
+        (percent, loaded, total) => {
+          setUploadProgress(percent);
+          console.log(`⬆️ Upload ${percent}% (${formatFileSize(loaded)} / ${formatFileSize(total)})`);
+        }
+      );
+      setUploadProgress(0);
       console.log('📥 Response:', result);
 
       if (result.success) {
@@ -868,6 +918,7 @@ export default function Admin() {
         console.log('📸 Uploaded URLs:', result.uploadedUrls);
         setNewProjectData({ name: '', location: '', year: new Date().getFullYear().toString(), category: '', description: '' });
         setNewProjectImages([]);
+        setNewProjectVideos([]);
         setSelectedProjectFiles(null);
         setFilesReadyToCreate(false);
         setIsUploadingProject(false);
@@ -889,6 +940,9 @@ export default function Admin() {
     } catch (error) {
       console.error('❌ Project creation failed:', error);
       showSuccessNotification('Failed to create project: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsUploadingProject(false);
+      setUploadProgress(0);
     }
   };
 
@@ -1559,6 +1613,18 @@ export default function Admin() {
 
                   </div>
 
+                  {isUploadingProject && uploadProgress > 0 && (
+                    <div className="mb-4">
+                      <div className="flex justify-between text-xs text-stone-400 mb-1">
+                        <span>Uploading to server...</span>
+                        <span>{uploadProgress}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-white/10 rounded overflow-hidden">
+                        <div className="h-full bg-green-500 transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                      </div>
+                    </div>
+                  )}
+
                   <motion.button
                     type="submit"
                     disabled={isUploadingProject}
@@ -1569,7 +1635,9 @@ export default function Admin() {
                         : 'bg-white text-black hover:bg-stone-200'
                     }`}
                   >
-                    {isUploadingProject ? '⏳ Creating...' : <><Plus size={16} /> Create Project</>}
+                    {isUploadingProject
+                      ? (uploadProgress > 0 ? `⏳ Uploading ${uploadProgress}%` : '⏳ Creating...')
+                      : <><Plus size={16} /> Create Project</>}
                   </motion.button>
                 </form>
 
@@ -1609,23 +1677,37 @@ export default function Admin() {
                               rows={3} className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-white/40 resize-none" />
                           </div>
                           <div>
-                            <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Images & Videos ({editingProjectImages.length}/20)</label>
+                            <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Images ({editingProjectImages.length})</label>
                             {editingProjectImages.length > 0 && (
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                                 {editingProjectImages.map((img, idx) => (
                                   <div key={idx} className="relative group">
                                     <div className="bg-white/10 rounded overflow-hidden aspect-square flex items-center justify-center">
-                                      {img.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                                        <img src={img} alt="preview" className="w-full h-full object-cover" />
-                                      ) : img.match(/\.(mp4|webm|mov|avi|mkv)$/i) ? (
-                                        <video src={img} className="w-full h-full object-cover" muted playsInline preload="metadata" controls />
-                                      ) : (
-                                        <div className="text-xs text-stone-500 text-center px-2 break-all">{img.slice(-30)}</div>
-                                      )}
+                                      <img src={img} alt="preview" className="w-full h-full object-cover" />
                                     </div>
                                     <motion.button
                                       whileHover={{ scale: 1.1 }}
                                       onClick={() => handleRemoveProjectImage(idx)}
+                                      className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <X size={12} className="text-white" />
+                                    </motion.button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Videos ({editingProjectVideos.length})</label>
+                            {editingProjectVideos.length > 0 && (
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                                {editingProjectVideos.map((vid, idx) => (
+                                  <div key={idx} className="relative group">
+                                    <div className="bg-white/10 rounded overflow-hidden aspect-square flex items-center justify-center">
+                                      <video src={vid} className="w-full h-full object-cover" muted playsInline preload="metadata" controls />
+                                    </div>
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      onClick={() => setEditingProjectVideos(prev => prev.filter((_, i) => i !== idx))}
                                       className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                     >
                                       <X size={12} className="text-white" />
@@ -1646,6 +1728,18 @@ export default function Admin() {
                                 {isUploadingEdit ? '⏳ Uploading...' : '📁 Add Files'}
                               </motion.div>
                             </label>
+
+                            {isUploadingEdit && uploadProgress > 0 && (
+                              <div className="mt-3">
+                                <div className="flex justify-between text-xs text-stone-400 mb-1">
+                                  <span>Uploading to server...</span>
+                                  <span>{uploadProgress}%</span>
+                                </div>
+                                <div className="w-full h-2 bg-white/10 rounded overflow-hidden">
+                                  <div className="h-full bg-green-500 transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                                </div>
+                              </div>
+                            )}
                             {filesReadyToUpdate && !isUploadingEdit && (
                               <motion.button
                                 whileHover={{ scale: 1.02 }}
@@ -1696,7 +1790,7 @@ export default function Admin() {
                             }} className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded text-sm uppercase tracking-widest hover:bg-stone-200">
                               <Check size={14} /> Save
                             </motion.button>
-                            <motion.button whileHover={{ scale: 1.02 }} onClick={() => { setEditingProjectId(null); setEditProjectData({}); setEditingProjectImages([]); }} className="px-4 py-2 bg-white/10 border border-white/20 rounded text-sm uppercase tracking-widest hover:bg-white/20">Cancel</motion.button>
+                            <motion.button whileHover={{ scale: 1.02 }} onClick={() => { setEditingProjectId(null); setEditProjectData({}); setEditingProjectImages([]); setEditingProjectVideos([]); setSelectedEditFiles(null); }} className="px-4 py-2 bg-white/10 border border-white/20 rounded text-sm uppercase tracking-widest hover:bg-white/20">Cancel</motion.button>
                           </div>
                         </div>
                       ) : (
@@ -1732,6 +1826,7 @@ export default function Admin() {
                                 description: project.description || '',
                               });
                               setEditingProjectImages(Array.isArray(project.images) ? project.images : []);
+                              setEditingProjectVideos(Array.isArray(project.videos) ? project.videos : []);
                             }}
                               className="px-4 py-2 bg-white/10 border border-white/20 rounded text-sm uppercase tracking-widest hover:bg-white/20">Edit</motion.button>
                             <motion.button whileHover={{ scale: 1.05 }} onClick={() => handleDeleteProject(project.id)}

@@ -24,7 +24,7 @@ export function isAuthenticated() {
 export async function login(email, password) {
   try {
     console.log('🔐 [Auth] Logging in:', email);
-    const response = await fetch(`${API_BASE}/auth/login`, {
+    const response = await fetch(`${API_BASE}/auth.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),

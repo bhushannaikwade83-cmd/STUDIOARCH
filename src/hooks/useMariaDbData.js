@@ -48,25 +48,24 @@ export function useMariaDbTable(endpoint, options = {}) {
 export function useProjects() {
   const { data, loading, error, refetch } = useMariaDbTable('/projects');
 
-  // Parse images JSON field
+  // Parse the images and videos JSON columns into arrays
   const parsedData = useMemo(() => {
-    console.log('📊 [useProjects] Raw data from API:', data);
-    console.log('📊 [useProjects] Loading:', loading, 'Error:', error);
-
-    const parsed = data.map(project => {
+    const parseList = (value, projectId, field) => {
+      if (!value) return [];
+      if (Array.isArray(value)) return value;
       try {
-        const images = project.images
-          ? (typeof project.images === 'string' ? JSON.parse(project.images) : project.images)
-          : null;
-        return { ...project, images };
+        return JSON.parse(value) || [];
       } catch (e) {
-        console.warn(`Failed to parse images for project ${project.id}:`, e);
-        return { ...project, images: null };
+        console.warn(`Failed to parse ${field} for project ${projectId}:`, e);
+        return [];
       }
-    });
+    };
 
-    console.log('📊 [useProjects] Parsed data:', parsed);
-    return parsed;
+    return data.map(project => ({
+      ...project,
+      images: parseList(project.images, project.id, 'images'),
+      videos: parseList(project.videos, project.id, 'videos'),
+    }));
   }, [data]);
 
   return { data: parsedData, loading, error, refetch };

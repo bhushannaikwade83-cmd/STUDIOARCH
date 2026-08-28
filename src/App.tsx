@@ -6,6 +6,7 @@ import Journal from './pages/Journal';
 import Contact from './pages/Contact';
 import Admin from './pages/Admin';
 import Events from './pages/Events';
+import Upload from './pages/Upload';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
       <Route path="/contact" element={<Contact />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="/events" element={<Events />} />
+      <Route path="/upload" element={<Upload />} />
     </Routes>
   );
 }

@@ -158,21 +158,23 @@ app.get('/studioarch/api/projects', async (req, res) => {
     conn.release();
     res.json(rows);
   } catch (error) {
-    console.error('❌ /api/projects error:', error.message);
-    res.status(500).json({ error: error.message });
+    console.error('❌ /api/projects error:', error.message || error);
+    console.error('Full error:', error);
+    res.status(500).json({ error: error.message || 'Unknown error' });
   }
 });
 
 app.post('/studioarch/api/projects', authMiddleware, async (req, res) => {
   try {
-    const { title, description, images } = req.body;
+    const { name, title, location, year, category, description, images } = req.body;
+    const projectTitle = name || title;
     const conn = await pool.getConnection();
     const [result] = await conn.execute(
-      'INSERT INTO projects (title, description, images) VALUES (?, ?, ?)',
-      [title, description, JSON.stringify(images)]
+      'INSERT INTO projects (name, location, year, category, description, images) VALUES (?, ?, ?, ?, ?, ?)',
+      [projectTitle, location || null, year || null, category || null, description || null, images ? JSON.stringify(images) : null]
     );
     conn.release();
-    res.json({ id: result.insertId, title, description });
+    res.json({ id: result.insertId, name: projectTitle });
   } catch (error) {
     console.error('❌ /api/projects POST error:', error.message);
     res.status(500).json({ error: error.message });
