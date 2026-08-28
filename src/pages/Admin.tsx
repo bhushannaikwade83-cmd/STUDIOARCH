@@ -89,7 +89,7 @@ import { useProjects, useJournalPosts, useContactMessages, useGallery, useEventV
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
-import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, getContactInfo, getGallery, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo } from '../utils/api';
+import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, getContactInfo, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo } from '../utils/api';
 
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB - videos are uploaded uncompressed
 const MAX_PROJECT_FILES = 20; // images + videos combined, per project
@@ -486,20 +486,9 @@ export default function Admin() {
         });
 
         if (result.success) {
-          // Refresh gallery data
-          try {
-            console.log('📸 Fetching gallery data...');
-            const galleryData = await getGallery();
-            console.log('📸 Gallery data received:', galleryData);
-            if (galleryData && Array.isArray(galleryData)) {
-              console.log('📸 Setting gallery images:', galleryData.length);
-              setGalleryImages(galleryData);
-            } else {
-              console.warn('📸 Gallery data not an array:', galleryData);
-            }
-          } catch (error) {
-            console.error('📸 Failed to fetch gallery:', error);
-          }
+          // Refresh gallery data via hook refetch
+          console.log('📸 Refetching gallery data...');
+          await refetchGallery();
           setNewImageUrl('');
           setNewImageTitle('');
           showSuccessNotification('Image added to gallery!');
@@ -552,18 +541,9 @@ export default function Admin() {
           if (dbResult.success) {
             console.log('✅ Database save successful, updating UI...');
 
-            // Refetch gallery data
-            try {
-              console.log('📸 Fetching gallery data...');
-              const galleryData = await getGallery();
-              console.log('📸 Gallery data received:', galleryData);
-              if (galleryData && Array.isArray(galleryData)) {
-                console.log('📸 Setting gallery images:', galleryData.length);
-                setGalleryImages(galleryData);
-              }
-            } catch (error) {
-              console.error('📸 Failed to fetch gallery:', error);
-            }
+            // Refetch gallery data via hook refetch
+            console.log('📸 Refetching gallery data...');
+            await refetchGallery();
 
             setNewImageUrl('');
             setNewImageFile(null);
