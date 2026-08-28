@@ -62,14 +62,14 @@ export async function createProject(data) {
 }
 
 export async function updateProject(id, data) {
-  return apiCall(`/api/projects/${id}`, {
+  return apiCall(`/projects/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
 }
 
 export async function deleteProject(id) {
-  return apiCall(`/api/projects/${id}`, { method: 'DELETE' });
+  return apiCall(`/projects/${id}`, { method: 'DELETE' });
 }
 
 export async function getEventVideos() {
@@ -84,7 +84,7 @@ export async function createEventVideo(data) {
 }
 
 export async function deleteEventVideo(id) {
-  return apiCall(`/api/event-videos/${id}`, { method: 'DELETE' });
+  return apiCall(`/event-videos/${id}`, { method: 'DELETE' });
 }
 
 export async function getJournalPosts() {
@@ -99,7 +99,7 @@ export async function createJournalPost(data) {
 }
 
 export async function deleteJournalPost(id) {
-  return apiCall(`/api/journal-posts/${id}`, { method: 'DELETE' });
+  return apiCall(`/journal-posts/${id}`, { method: 'DELETE' });
 }
 
 export async function getContactMessages() {
@@ -114,5 +114,5 @@ export async function createContactMessage(data) {
 }
 
 export async function deleteContactMessage(id) {
-  return apiCall(`/api/contact-messages/${id}`, { method: 'DELETE' });
+  return apiCall(`/contact-messages/${id}`, { method: 'DELETE' });
 }
