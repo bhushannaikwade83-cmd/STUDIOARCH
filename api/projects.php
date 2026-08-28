@@ -98,7 +98,14 @@ if ($method === 'GET') {
 
 } elseif ($method === 'POST') {
   // Create project (requires auth)
-  verifyToken();
+  error_log('[DEBUG] POST - Headers: ' . json_encode(getallheaders()));
+  error_log('[DEBUG] POST - Authorization: ' . ($_SERVER['HTTP_AUTHORIZATION'] ?? 'MISSING'));
+  try {
+    verifyToken();
+  } catch (Exception $e) {
+    error_log('[ERROR] verifyToken failed: ' . $e->getMessage());
+    throw $e;
+  }
 
   // Get form data
   $title = $_POST['name'] ?? null;
@@ -157,7 +164,13 @@ if ($method === 'GET') {
 
 } elseif ($method === 'PUT') {
   // Update project
-  verifyToken();
+  error_log('[DEBUG] PUT - Authorization: ' . ($_SERVER['HTTP_AUTHORIZATION'] ?? 'MISSING'));
+  try {
+    verifyToken();
+  } catch (Exception $e) {
+    error_log('[ERROR] verifyToken failed in PUT: ' . $e->getMessage());
+    throw $e;
+  }
 
   $id = $_GET['id'] ?? null;
   if (!$id) {
