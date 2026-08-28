@@ -1,6 +1,32 @@
-# Upload limits - videos up to 500MB (uncompressed), images compressed client-side
-php_value upload_max_filesize 500M
-php_value post_max_size 512M
-php_value max_execution_time 600
-php_value max_input_time 600
-php_value memory_limit 512M
+# Clean URLs: /api/projects -> projects.php
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^(.*)$ $1.php [L]
+</IfModule>
+
+# Upload limits - videos up to 500MB (uncompressed), images compressed client-side.
+# Only applies when PHP runs as an Apache module; on PHP-FPM/CGI these are
+# ignored and the same values must be set in cPanel > MultiPHP INI Editor.
+<IfModule mod_php.c>
+  php_value upload_max_filesize 500M
+  php_value post_max_size 512M
+  php_value max_execution_time 600
+  php_value max_input_time 600
+  php_value memory_limit 512M
+</IfModule>
+<IfModule mod_php7.c>
+  php_value upload_max_filesize 500M
+  php_value post_max_size 512M
+  php_value max_execution_time 600
+  php_value max_input_time 600
+  php_value memory_limit 512M
+</IfModule>
+<IfModule mod_php8.c>
+  php_value upload_max_filesize 500M
+  php_value post_max_size 512M
+  php_value max_execution_time 600
+  php_value max_input_time 600
+  php_value memory_limit 512M
+</IfModule>
