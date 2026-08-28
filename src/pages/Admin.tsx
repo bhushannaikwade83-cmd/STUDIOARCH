@@ -473,8 +473,8 @@ export default function Admin() {
         let folderId = galleryFolders?.[0]?.id;
         if (!folderId) {
           const folderResult = await createGalleryFolder({ name: 'Portfolio', display_order: 0 });
-          if (folderResult.success && folderResult.data[0]) {
-            folderId = folderResult.data[0].id;
+          if (folderResult.success && folderResult.id) {
+            folderId = folderResult.id;
           }
         }
 
@@ -522,8 +522,8 @@ export default function Admin() {
           let folderId = galleryFolders?.[0]?.id;
           if (!folderId) {
             const folderResult = await createGalleryFolder({ name: 'Portfolio', display_order: 0 });
-            if (folderResult.success && folderResult.data[0]) {
-              folderId = folderResult.data[0].id;
+            if (folderResult.success && folderResult.id) {
+              folderId = folderResult.id;
             }
           }
 
