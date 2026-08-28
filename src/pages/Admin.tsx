@@ -91,6 +91,7 @@ import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
 
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB - videos are uploaded uncompressed
+const MAX_PROJECT_FILES = 20; // images + videos combined, per project
 
 type EventVideo = { id: number; youtube_id?: string; title: string; url?: string; isYoutube: boolean; };
 type JournalPost = { id: number; title: string; date: string; excerpt: string; category: string; };
@@ -260,6 +261,14 @@ export default function Admin() {
   const [editingProjectVideos, setEditingProjectVideos] = useState<string[]>([]);
   const [newProjectImageUrl, setNewProjectImageUrl] = useState('');
   const [newProjectImageFile, setNewProjectImageFile] = useState<File | null>(null);
+
+  // A project's 20-file cap counts images, videos and files still waiting
+  // to be uploaded together.
+  const createFormFileCount =
+    newProjectImages.length + newProjectVideos.length + (selectedProjectFiles?.length || 0);
+  const editFormFileCount =
+    editingProjectImages.length + editingProjectVideos.length + (selectedEditFiles?.length || 0);
+
   // Update gallery images when Supabase gallery data loads
   useEffect(() => {
     if (galleryFolders && galleryFolders.length > 0) {
@@ -972,9 +981,13 @@ export default function Admin() {
   const handleSelectProjectFiles = async (files: FileList | null) => {
     if (!files) return;
 
-    const canAdd = 20 - newProjectImages.length - (selectedProjectFiles?.length || 0);
+    const canAdd = MAX_PROJECT_FILES - createFormFileCount;
+    if (canAdd <= 0) {
+      showSuccessNotification(`Only ${MAX_PROJECT_FILES} files allowed per project`);
+      return;
+    }
     if (files.length > canAdd) {
-      showSuccessNotification(`Can only add ${canAdd} more files (limit: 20)`);
+      showSuccessNotification(`Only ${MAX_PROJECT_FILES} files allowed per project - you can add ${canAdd} more`);
       return;
     }
 
@@ -1017,9 +1030,13 @@ export default function Admin() {
   const handleSelectEditFiles = async (files: FileList | null) => {
     if (!files) return;
 
-    const canAdd = 20 - editingProjectImages.length - (selectedEditFiles?.length || 0);
+    const canAdd = MAX_PROJECT_FILES - editFormFileCount;
+    if (canAdd <= 0) {
+      showSuccessNotification(`Only ${MAX_PROJECT_FILES} files allowed per project`);
+      return;
+    }
     if (files.length > canAdd) {
-      showSuccessNotification(`Can only add ${canAdd} more files (limit: 20)`);
+      showSuccessNotification(`Only ${MAX_PROJECT_FILES} files allowed per project - you can add ${canAdd} more`);
       return;
     }
 
@@ -1542,7 +1559,12 @@ export default function Admin() {
 
                     {/* Project Images/Videos */}
                     <div>
-                      <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Project Images/Videos ({newProjectImages.length}/20)</label>
+                      <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">
+                        Project Images/Videos ({createFormFileCount}/{MAX_PROJECT_FILES})
+                        {createFormFileCount >= MAX_PROJECT_FILES && (
+                          <span className="ml-2 text-amber-400 normal-case tracking-normal">Limit reached - only {MAX_PROJECT_FILES} allowed</span>
+                        )}
+                      </label>
                       {newProjectImages.length > 0 && (
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                           {newProjectImages.map((img, idx) => (
@@ -1568,7 +1590,7 @@ export default function Admin() {
                           ))}
                         </div>
                       )}
-                      {newProjectImages.length < 20 && (
+                      {createFormFileCount < MAX_PROJECT_FILES && (
                         <div className="space-y-2">
                           <input
                             type="file"
@@ -1681,6 +1703,12 @@ export default function Admin() {
                               rows={3} className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-white/40 resize-none" />
                           </div>
                           <div>
+                            <div className="text-xs uppercase tracking-widest text-stone-400 mb-3">
+                              Total files: {editFormFileCount}/{MAX_PROJECT_FILES}
+                              {editFormFileCount >= MAX_PROJECT_FILES && (
+                                <span className="ml-2 text-amber-400 normal-case tracking-normal">Limit reached - only {MAX_PROJECT_FILES} allowed</span>
+                              )}
+                            </div>
                             <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Images ({editingProjectImages.length})</label>
                             {editingProjectImages.length > 0 && (
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">

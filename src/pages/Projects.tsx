@@ -15,6 +15,9 @@ type Project = {
   category: string;
   description: string;
   images?: string[] | null;
+  videos?: string[] | null;
+  /** images and videos combined, in display order */
+  media?: string[];
   size?: string;
   locationmapurl?: string;
 };
@@ -31,19 +34,27 @@ export default function Projects() {
   const fadeTimeoutRef = useRef<{ [key: number]: NodeJS.Timeout }>({});
   const slideshowIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Update projects when Supabase data is loaded
+  // Update projects when data is loaded. Images and videos live in separate
+  // database columns; the gallery shows them as one list.
   useEffect(() => {
     if (supabaseProjects && supabaseProjects.length > 0) {
-      setProjects(supabaseProjects as typeof PROJECTS);
+      const withMedia = supabaseProjects.map((project: any) => ({
+        ...project,
+        media: [
+          ...(Array.isArray(project.images) ? project.images : []),
+          ...(Array.isArray(project.videos) ? project.videos : []),
+        ],
+      }));
+      setProjects(withMedia as typeof PROJECTS);
     }
   }, [supabaseProjects]);
 
   // Auto-advance slideshow when project is selected (but NOT when video is playing)
   useEffect(() => {
-    if (!selectedProject || !selectedProject.images || selectedProject.images.length <= 1) return;
+    if (!selectedProject || !selectedProject.media || selectedProject.media.length <= 1) return;
 
     // Don't auto-advance if current item is a video
-    const currentImage = selectedProject.images[selectedImageIndex];
+    const currentImage = selectedProject.media[selectedImageIndex];
     if (isVideoUrl(currentImage)) {
       console.log('🎬 Video detected - auto-slide paused');
       return;
@@ -51,7 +62,7 @@ export default function Projects() {
 
     const startSlideshow = () => {
       slideshowIntervalRef.current = setInterval(() => {
-        setSelectedImageIndex((prev) => (prev + 1) % selectedProject.images.length);
+        setSelectedImageIndex((prev) => (prev + 1) % selectedProject.media.length);
       }, 5000); // Change image every 5 seconds
     };
 
@@ -210,19 +221,41 @@ export default function Projects() {
               onHoverEnd={() => handleHoverEnd(project.id)}
             >
               <div className="w-full h-full relative bg-black">
-                {/* Image with fade on hover */}
+                {/* Cover media with fade on hover. Falls back to the first
+                    video when a project has no images. */}
                 <div className="w-full h-full overflow-hidden bg-stone-900">
-                  <motion.img
-                    src={project.images?.[0] || ''}
-                    alt={project.title || project.name || 'Project'}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    animate={{
+                  {(() => {
+                    const cover = project.images?.[0] || project.videos?.[0] || '';
+                    const coverAnimation = {
                       opacity: hoveredProjectId === project.id ? 1 : 0.15,
                       scale: hoveredProjectId === project.id ? 1.08 : 1,
-                    }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                  />
+                    };
+
+                    if (cover && isVideoUrl(cover)) {
+                      return (
+                        <motion.video
+                          src={cover}
+                          className="w-full h-full object-cover"
+                          muted
+                          playsInline
+                          preload="metadata"
+                          animate={coverAnimation}
+                          transition={{ duration: 0.8, ease: "easeOut" }}
+                        />
+                      );
+                    }
+
+                    return (
+                      <motion.img
+                        src={cover}
+                        alt={project.title || project.name || 'Project'}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        animate={coverAnimation}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                      />
+                    );
+                  })()}
                 </div>
 
                 {/* Gradient Overlay */}
@@ -294,7 +327,7 @@ export default function Projects() {
               </motion.div>
 
               {/* Main Image Carousel */}
-              {selectedProject.images && selectedProject.images.length > 0 && (
+              {selectedProject.media && selectedProject.media.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -303,16 +336,16 @@ export default function Projects() {
                 >
                   <div className="relative flex items-center gap-4 mb-8">
                     {/* Previous Button */}
-                    {selectedProject.images.length > 1 && (
+                    {selectedProject.media.length > 1 && (
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => {
-                          setSelectedImageIndex((selectedImageIndex - 1 + selectedProject.images.length) % selectedProject.images.length);
+                          setSelectedImageIndex((selectedImageIndex - 1 + selectedProject.media.length) % selectedProject.media.length);
                           // Reset slideshow timer on manual click
                           if (slideshowIntervalRef.current) clearInterval(slideshowIntervalRef.current);
                           slideshowIntervalRef.current = setInterval(() => {
-                            setSelectedImageIndex((prev) => (prev + 1) % selectedProject.images.length);
+                            setSelectedImageIndex((prev) => (prev + 1) % selectedProject.media.length);
                           }, 5000);
                         }}
                         className="p-3 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
@@ -323,7 +356,7 @@ export default function Projects() {
 
                     {/* Main Image */}
                     <div className="h-[750px] flex-1 rounded-lg overflow-hidden shadow-lg bg-stone-900">
-                      {isVideoUrl(selectedProject.images[selectedImageIndex]) ? (
+                      {isVideoUrl(selectedProject.media[selectedImageIndex]) ? (
                         <motion.div
                           key={selectedImageIndex}
                           initial={{ opacity: 0 }}
@@ -331,17 +364,19 @@ export default function Projects() {
                           transition={{ duration: 0.5 }}
                           className="w-full h-full"
                         >
+                          {/* No crossOrigin here: the uploads folder is served
+                              without CORS headers, and requesting it in CORS
+                              mode makes the video fail to load from dev. */}
                           <video
-                            src={selectedProject.images[selectedImageIndex]}
-                            crossOrigin="anonymous"
+                            src={selectedProject.media[selectedImageIndex]}
                             controls
                             controlsList="nodownload"
                             preload="metadata"
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain"
                             style={{ background: '#1c1917' }}
                             onError={(e) => {
                               const video = e.target as HTMLVideoElement;
-                              console.error('❌ Video error:', selectedProject.images[selectedImageIndex]);
+                              console.error('❌ Video error:', selectedProject.media[selectedImageIndex]);
                               console.error('Video error code:', video.error?.code, video.error?.message);
                               console.error('Full error:', video.error);
                             }}
@@ -352,7 +387,7 @@ export default function Projects() {
                       ) : (
                         <motion.img
                           key={selectedImageIndex}
-                          src={selectedProject.images[selectedImageIndex]}
+                          src={selectedProject.media[selectedImageIndex]}
                           alt={`${selectedProject.name} - View ${selectedImageIndex + 1}`}
                           className="w-full h-full object-cover"
                           initial={{ opacity: 0 }}
@@ -363,16 +398,16 @@ export default function Projects() {
                     </div>
 
                     {/* Next Button */}
-                    {selectedProject.images.length > 1 && (
+                    {selectedProject.media.length > 1 && (
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => {
-                          setSelectedImageIndex((selectedImageIndex + 1) % selectedProject.images.length);
+                          setSelectedImageIndex((selectedImageIndex + 1) % selectedProject.media.length);
                           // Reset slideshow timer on manual click
                           if (slideshowIntervalRef.current) clearInterval(slideshowIntervalRef.current);
                           slideshowIntervalRef.current = setInterval(() => {
-                            setSelectedImageIndex((prev) => (prev + 1) % selectedProject.images.length);
+                            setSelectedImageIndex((prev) => (prev + 1) % selectedProject.media.length);
                           }, 5000);
                         }}
                         className="p-3 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
@@ -384,13 +419,13 @@ export default function Projects() {
 
                   {/* Media Counter */}
                   <div className="text-sm text-stone-500 mb-4">
-                    {isVideoUrl(selectedProject.images[selectedImageIndex]) ? '🎬 Video' : '🖼️ Image'} {selectedImageIndex + 1} of {selectedProject.images.length}
+                    {isVideoUrl(selectedProject.media[selectedImageIndex]) ? '🎬 Video' : '🖼️ Image'} {selectedImageIndex + 1} of {selectedProject.media.length}
                   </div>
 
                   {/* Image Navigation Thumbnails */}
-                  {selectedProject.images.length > 1 && (
-                    <div className={`flex gap-4 pb-2 ${selectedProject.images.length <= 5 ? 'justify-center' : 'overflow-x-auto'}`}>
-                      {selectedProject.images.map((img, idx) => (
+                  {selectedProject.media.length > 1 && (
+                    <div className={`flex gap-4 pb-2 ${selectedProject.media.length <= 5 ? 'justify-center' : 'overflow-x-auto'}`}>
+                      {selectedProject.media.map((img, idx) => (
                         <motion.button
                           key={idx}
                           onClick={() => setSelectedImageIndex(idx)}
@@ -401,8 +436,15 @@ export default function Projects() {
                         >
                           {isVideoUrl(img) ? (
                             <>
-                              <div className="w-full h-full bg-black/80 flex items-center justify-center">
-                                <span className="text-2xl">🎬</span>
+                              <video
+                                src={img}
+                                className="w-full h-full object-cover"
+                                muted
+                                playsInline
+                                preload="metadata"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <span className="text-xl">▶</span>
                               </div>
                             </>
                           ) : (

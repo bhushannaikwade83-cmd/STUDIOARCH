@@ -426,19 +426,42 @@ export default function Home() {
               >
                 <Link to="/projects" state={{ selectedCategory: project.category }} className="block w-full h-full relative">
                   <div className="w-full h-full relative bg-black">
-                    {/* Image with opacity control */}
+                    {/* Cover media with opacity control. Falls back to the
+                        first video when a project has no images. */}
                     <div className="w-full h-full overflow-hidden bg-stone-900">
-                      <motion.img
-                        src={project.images?.[0] || ''}
-                        alt={project.title || project.name || 'Project'}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        animate={{
+                      {(() => {
+                        const cover = project.images?.[0] || project.videos?.[0] || '';
+                        const isVideo = /\.(mp4|webm|ogg|mov|avi|mkv)$/i.test(cover);
+                        const coverAnimation = {
                           opacity: hoveredProjectId === project.id ? 1 : 0.2,
                           scale: hoveredProjectId === project.id ? 1.08 : 1,
-                        }}
-                        transition={{ duration: 0.8, ease: 'easeOut' }}
-                      />
+                        };
+
+                        if (cover && isVideo) {
+                          return (
+                            <motion.video
+                              src={cover}
+                              className="w-full h-full object-cover"
+                              muted
+                              playsInline
+                              preload="metadata"
+                              animate={coverAnimation}
+                              transition={{ duration: 0.8, ease: 'easeOut' }}
+                            />
+                          );
+                        }
+
+                        return (
+                          <motion.img
+                            src={cover}
+                            alt={project.title || project.name || 'Project'}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            animate={coverAnimation}
+                            transition={{ duration: 0.8, ease: 'easeOut' }}
+                          />
+                        );
+                      })()}
                     </div>
 
                     {/* Gradient Overlay */}
