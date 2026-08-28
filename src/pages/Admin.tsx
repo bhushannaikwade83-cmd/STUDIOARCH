@@ -1497,7 +1497,13 @@ export default function Admin() {
                           <div className="flex gap-2 flex-shrink-0">
                             <motion.button whileHover={{ scale: 1.05 }} onClick={() => {
                               setEditingProjectId(project.id);
-                              setEditProjectData({});
+                              setEditProjectData({
+                                title: project.title || '',
+                                location: project.location || '',
+                                year: project.year || '',
+                                category: project.category || '',
+                                description: project.description || '',
+                              });
                               setEditingProjectImages(Array.isArray(project.images) ? project.images : []);
                             }}
                               className="px-4 py-2 bg-white/10 border border-white/20 rounded text-sm uppercase tracking-widest hover:bg-white/20">Edit</motion.button>

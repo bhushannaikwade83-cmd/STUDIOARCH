@@ -166,6 +166,9 @@ if ($method === 'GET') {
     exit();
   }
 
+  error_log('[DEBUG] PUT Request - POST data: ' . json_encode($_POST));
+  error_log('[DEBUG] PUT Request - FILES: ' . json_encode(array_keys($_FILES)));
+
   // Get form data
   $title = $_POST['name'] ?? null;
   $location = $_POST['location'] ?? null;
