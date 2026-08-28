@@ -192,7 +192,15 @@ if ($method === 'GET') {
   $conn = getConnection();
   $images_json = $images ? json_encode($images) : null;
 
-  error_log('[DEBUG] About to update project ' . $id . ' with title: ' . ($title ?? 'NULL'));
+  error_log('[DEBUG] About to update project ' . $id . ' with title: ' . ($title ?? 'NULL') . ', images_json: ' . ($images_json ?? 'NULL'));
+
+  // Convert NULL to proper types for binding
+  $title = $title ?? '';
+  $location = $location ?? '';
+  $year = $year ?? '';
+  $category = $category ?? '';
+  $description = $description ?? '';
+  $images_json = $images_json ?? '';
 
   $stmt = $conn->prepare(
     'UPDATE projects SET title = ?, location = ?, year = ?, category = ?, description = ?, images = ?, updated_at = NOW() WHERE id = ?'
@@ -206,6 +214,7 @@ if ($method === 'GET') {
     exit();
   }
 
+  error_log('[DEBUG] Binding params - title: ' . $title . ', id: ' . $id);
   $stmt->bind_param('ssssssi', $title, $location, $year, $category, $description, $images_json, $id);
 
   if ($stmt->execute()) {
