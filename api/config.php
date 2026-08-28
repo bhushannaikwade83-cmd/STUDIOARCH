@@ -52,7 +52,7 @@ function verifyToken() {
     $auth_header = $_SERVER['HTTP_AUTHORIZATION'];
   }
 
-  error_log('[DEBUG] verifyToken - Auth header: ' . ($auth_header ?: 'NONE'));
+  error_log('[DEBUG] verifyToken - Auth header present: ' . ($auth_header ? 'YES' : 'NO'));
 
   if (!preg_match('/Bearer\s+(\S+)/', $auth_header, $matches)) {
     http_response_code(401);

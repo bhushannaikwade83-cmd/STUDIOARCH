@@ -124,8 +124,7 @@ if ($method === 'GET') {
 
 } elseif ($method === 'POST') {
   // Create project (requires auth)
-  error_log('[DEBUG] POST - Headers: ' . json_encode(getallheaders()));
-  error_log('[DEBUG] POST - Authorization: ' . ($_SERVER['HTTP_AUTHORIZATION'] ?? 'MISSING'));
+  error_log('[DEBUG] POST - Auth header present: ' . (isset($_SERVER['HTTP_AUTHORIZATION']) ? 'YES' : 'NO'));
   try {
     verifyToken();
   } catch (Exception $e) {
@@ -271,7 +270,7 @@ if ($method === 'GET') {
     error_log('[DEBUG] Update successful. Rows affected: ' . $stmt->affected_rows);
     echo json_encode([
       'success' => true,
-      'images' => $images,
+      'images' => $allImages,
       'uploadedUrls' => $uploadedUrls,
       'affectedRows' => $stmt->affected_rows
     ]);
