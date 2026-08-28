@@ -571,7 +571,7 @@ export default function Admin() {
     try {
       // Create FormData for multipart request with files
       const formData = new FormData();
-      formData.append('name', editProjectData.name || '');
+      formData.append('name', editProjectData.title || '');
       formData.append('location', editProjectData.location || '');
       formData.append('year', editProjectData.year || '');
       formData.append('category', editProjectData.category || '');
@@ -1402,10 +1402,10 @@ export default function Admin() {
                       {editingProjectId === project.id ? (
                         <div className="space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {(['name', 'location', 'year', 'category'] as const).map(field => (
+                            {(['title', 'location', 'year', 'category'] as const).map(field => (
                               <div key={field}>
                                 <label className="text-xs uppercase tracking-widest text-stone-400 block mb-1">{field}</label>
-                                <input value={(editProjectData[field] ?? project[field]) as string} onChange={e => setEditProjectData(prev => ({ ...prev, [field]: e.target.value }))}
+                                <input value={(editProjectData[field as keyof typeof editProjectData] ?? project[field as keyof typeof project]) as string} onChange={e => setEditProjectData(prev => ({ ...prev, [field]: e.target.value }))}
                                   className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-white/40" />
                               </div>
                             ))}
