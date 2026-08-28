@@ -159,6 +159,7 @@ export default function Admin() {
   const [userSession, setUserSession] = useState(null);
   const [homeQuote, setHomeQuote] = useState("Space is the beginning of all architecture. The creation of light and shade, the volume of material, and the void between them define the soul of design.");
   const [philosophyText, setPhilosophyText] = useState("At 1StudioArch, we believe architecture is the thoughtful arrangement of space, light, and material...");
+  const [isSavingContent, setIsSavingContent] = useState(false);
   const [isUploadingProject, setIsUploadingProject] = useState(false);
   const [isUploadingEdit, setIsUploadingEdit] = useState(false);
   const [selectedProjectFiles, setSelectedProjectFiles] = useState<File[] | null>(null);
@@ -592,7 +593,58 @@ export default function Admin() {
     navigate('/');
   };
 
-  const handleSaveContent = (e: React.FormEvent) => { e.preventDefault(); showSuccessNotification('Content saved!'); };
+  // Load content settings from database on mount
+  useEffect(() => {
+    const loadContentSettings = async () => {
+      try {
+        const response = await fetch('https://digitrixmedia.com/studioarch/api/content-settings', {
+          cache: 'no-store'
+        });
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          data.forEach(setting => {
+            if (setting.key_name === 'home_quote') setHomeQuote(setting.value);
+            if (setting.key_name === 'philosophy_text') setPhilosophyText(setting.value);
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load content settings:', error);
+      }
+    };
+    loadContentSettings();
+  }, []);
+
+  const handleSaveContent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingContent(true);
+    try {
+      const token = getToken();
+      const settings = [
+        { key_name: 'home_quote', value: homeQuote },
+        { key_name: 'philosophy_text', value: philosophyText }
+      ];
+
+      for (const setting of settings) {
+        const response = await fetch('https://digitrixmedia.com/studioarch/api/content-settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(setting),
+        });
+
+        if (!response.ok) throw new Error(`Failed to save ${setting.key_name}`);
+      }
+
+      showSuccessNotification('✅ Content saved to database!');
+    } catch (error) {
+      console.error('Failed to save content:', error);
+      showSuccessNotification('Failed to save content: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsSavingContent(false);
+    }
+  };
 
   const handleSaveContact = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2304,13 +2356,19 @@ export default function Admin() {
                   <motion.div whileHover={{ x: 5 }} className="bg-white/5 border border-white/10 rounded-lg p-6">
                     <h3 className="text-lg font-light mb-2">Home Page Quote</h3>
                     <textarea value={homeQuote} onChange={e => setHomeQuote(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded px-4 py-3 text-white text-sm focus:outline-none focus:border-white/40 resize-none" rows={4} />
-                    <motion.button type="submit" whileHover={{ scale: 1.02 }} className="mt-4 bg-white text-black px-6 py-2 rounded font-light uppercase tracking-widest text-sm hover:bg-stone-200">Save Changes</motion.button>
                   </motion.div>
                   <motion.div whileHover={{ x: 5 }} className="bg-white/5 border border-white/10 rounded-lg p-6">
                     <h3 className="text-lg font-light mb-2">Studio Philosophy</h3>
                     <textarea value={philosophyText} onChange={e => setPhilosophyText(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded px-4 py-3 text-white text-sm focus:outline-none focus:border-white/40 resize-none" rows={4} />
-                    <motion.button type="submit" whileHover={{ scale: 1.02 }} className="mt-4 bg-white text-black px-6 py-2 rounded font-light uppercase tracking-widest text-sm hover:bg-stone-200">Save Changes</motion.button>
                   </motion.div>
+                  <motion.button
+                    type="submit"
+                    disabled={isSavingContent}
+                    whileHover={isSavingContent ? {} : { scale: 1.02 }}
+                    className={`${isSavingContent ? 'bg-stone-400 text-stone-600 cursor-not-allowed opacity-50' : 'bg-white text-black hover:bg-stone-200'} px-6 py-2 rounded font-light uppercase tracking-widest text-sm`}
+                  >
+                    {isSavingContent ? '⏳ Saving...' : '💾 Save All Content'}
+                  </motion.button>
                 </form>
               </div>
             )}
