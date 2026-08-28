@@ -462,7 +462,7 @@ export default function Admin() {
           folder_id: folderId,
           title: newImageTitle.trim(),
           image_url: newImageUrl.trim(),
-          display_order: galleryImages.length
+          display_order: galleryFolders.flatMap((f: any) => f.gallery_items || []).length
         });
 
         if (result.success) {
@@ -472,7 +472,7 @@ export default function Admin() {
           console.log('📸 Refetch called, waiting for data...');
           // Wait a moment for refetch to complete
           await new Promise(resolve => setTimeout(resolve, 500));
-          console.log('📸 After refetch, galleryImages:', galleryImages.length);
+          console.log('📸 After refetch, galleryImages:', galleryFolders.flatMap((f: any) => f.gallery_items || []).length);
           setNewImageUrl('');
           setNewImageTitle('');
           showSuccessNotification('Image added to gallery!');
@@ -517,7 +517,7 @@ export default function Admin() {
             folder_id: folderId,
             title: newImageTitle.trim(),
             image_url: uploadResult.url, // Save proxy URL directly
-            display_order: galleryImages.length
+            display_order: galleryFolders.flatMap((f: any) => f.gallery_items || []).length
           });
 
           console.log('Database insert result:', dbResult);
