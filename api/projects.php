@@ -3,6 +3,13 @@
 require_once 'config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
+
+// Handle _method override for PUT (because PHP doesn't parse multipart for PUT)
+if ($method === 'POST' && isset($_GET['_method']) && $_GET['_method'] === 'PUT') {
+  $method = 'PUT';
+  error_log('[DEBUG] Treating POST as PUT due to _method=PUT parameter');
+}
+
 error_log('[DEBUG] REQUEST_METHOD: ' . $method);
 error_log('[DEBUG] Content-Type: ' . ($_SERVER['CONTENT_TYPE'] ?? 'NOT SET'));
 error_log('[DEBUG] $_POST keys: ' . json_encode(array_keys($_POST)));
@@ -175,7 +182,9 @@ if ($method === 'GET') {
   $conn->close();
 
 } elseif ($method === 'PUT') {
-  // Update project
+  // Update project - NOTE: PHP doesn't auto-parse multipart for PUT, only POST!
+  // For PUT with files, we need to manually parse or change frontend to use POST
+
   error_log('[DEBUG] PUT - Authorization: ' . ($_SERVER['HTTP_AUTHORIZATION'] ?? 'MISSING'));
   try {
     verifyToken();
@@ -194,7 +203,12 @@ if ($method === 'GET') {
   error_log('[DEBUG] PUT Request - POST data: ' . json_encode($_POST));
   error_log('[DEBUG] PUT Request - FILES: ' . json_encode(array_keys($_FILES)));
 
-  // Get form data
+  // For PUT with multipart, $_POST is empty because PHP doesn't parse it automatically
+  // We need to manually parse or use POST method instead
+  // WORKAROUND: Change frontend to use POST /projects?id=X instead of PUT
+  // OR manually parse multipart data here
+
+  // Get form data (will be empty for PUT with multipart - PHP limitation!)
   $title = $_POST['name'] ?? null;
   $location = $_POST['location'] ?? null;
   $year = $_POST['year'] ?? null;

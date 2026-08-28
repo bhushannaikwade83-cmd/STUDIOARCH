@@ -602,8 +602,10 @@ export default function Admin() {
       }
 
       const token = getToken();
-      const response = await fetch(`https://digitrixmedia.com/studioarch/api/projects?id=${id}`, {
-        method: 'PUT',
+      // Use POST instead of PUT because PHP doesn't auto-parse multipart data for PUT!
+      // Add _method=PUT to indicate this is an update
+      const response = await fetch(`https://digitrixmedia.com/studioarch/api/projects?id=${id}&_method=PUT`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
