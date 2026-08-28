@@ -182,10 +182,7 @@ if ($method === 'GET') {
   $conn->close();
 
 } elseif ($method === 'PUT') {
-  // Update project - NOTE: PHP doesn't auto-parse multipart for PUT, only POST!
-  // For PUT with files, we need to manually parse or change frontend to use POST
-
-  error_log('[DEBUG] PUT - Authorization: ' . ($_SERVER['HTTP_AUTHORIZATION'] ?? 'MISSING'));
+  // Update project
   try {
     verifyToken();
   } catch (Exception $e) {
@@ -200,38 +197,51 @@ if ($method === 'GET') {
     exit();
   }
 
-  error_log('[DEBUG] PUT Request - POST data: ' . json_encode($_POST));
-  error_log('[DEBUG] PUT Request - FILES: ' . json_encode(array_keys($_FILES)));
+  $conn = getConnection();
 
-  // For PUT with multipart, $_POST is empty because PHP doesn't parse it automatically
-  // We need to manually parse or use POST method instead
-  // WORKAROUND: Change frontend to use POST /projects?id=X instead of PUT
-  // OR manually parse multipart data here
+  // CRITICAL FIX: Fetch existing project first to preserve values
+  error_log('[DEBUG] Fetching existing project ' . $id);
+  $existingStmt = $conn->prepare('SELECT * FROM projects WHERE id = ?');
+  $existingStmt->bind_param('i', $id);
+  $existingStmt->execute();
+  $existingResult = $existingStmt->get_result();
+  $existingProject = $existingResult->fetch_assoc();
 
-  // Get form data (will be empty for PUT with multipart - PHP limitation!)
-  $title = $_POST['name'] ?? null;
-  $location = $_POST['location'] ?? null;
-  $year = $_POST['year'] ?? null;
-  $category = $_POST['category'] ?? null;
-  $description = $_POST['description'] ?? null;
+  if (!$existingProject) {
+    http_response_code(404);
+    echo json_encode(['error' => 'Project not found']);
+    $conn->close();
+    exit();
+  }
 
-  error_log('[DEBUG] Extracted values - title: ' . ($title ?? 'NULL') . ', location: ' . ($location ?? 'NULL'));
+  error_log('[DEBUG] Existing project found: ' . json_encode($existingProject));
 
-  // Get existing image URLs from form data
-  $existingImages = $_POST['existingImages'] ?? null;
-  $existingImagesArray = $existingImages ? json_decode($existingImages, true) : [];
+  // Get form data - use existing values as defaults if not provided
+  $title = $_POST['name'] ?? $existingProject['title'];
+  $location = $_POST['location'] ?? $existingProject['location'];
+  $year = $_POST['year'] ?? $existingProject['year'];
+  $category = $_POST['category'] ?? $existingProject['category'];
+  $description = $_POST['description'] ?? $existingProject['description'];
+
+  error_log('[DEBUG] Update values - title: ' . $title . ', location: ' . $location);
+
+  // Get existing images from DB (not from form data which might be empty)
+  $existingImagesArray = [];
+  if (!empty($existingProject['images'])) {
+    $existingImagesArray = json_decode($existingProject['images'], true) ?: [];
+  }
+
+  error_log('[DEBUG] Existing images: ' . json_encode($existingImagesArray));
 
   // Process newly uploaded files
   $uploadedUrls = processUploadedFiles('files');
+  error_log('[DEBUG] Newly uploaded URLs: ' . json_encode($uploadedUrls));
 
-  // Combine existing and new images
+  // Combine existing and new images (APPEND, don't replace)
   $allImages = array_merge($existingImagesArray, $uploadedUrls);
-  $images = !empty($allImages) ? $allImages : [];
+  $images_json = json_encode($allImages ?: []);
 
-  $conn = getConnection();
-  $images_json = json_encode($images ?: []);
-
-  error_log('[DEBUG] About to update project ' . $id . ' with title: ' . ($title ?? 'NULL') . ', images_json: ' . ($images_json ?? 'NULL'));
+  error_log('[DEBUG] About to update project ' . $id . ' with title: ' . $title . ', total images: ' . count($allImages));
 
   $stmt = $conn->prepare(
     'UPDATE projects SET title = ?, location = ?, year = ?, category = ?, description = ?, images = ?, updated_at = NOW() WHERE id = ?'
@@ -245,9 +255,7 @@ if ($method === 'GET') {
     exit();
   }
 
-  error_log('[DEBUG] Binding params - title: ' . ($title ?? 'NULL') . ', images_json: ' . ($images_json ?? 'NULL') . ', id: ' . $id);
-
-  // Handle NULL values properly - use 's' for strings even if NULL
+  error_log('[DEBUG] Binding params - title: ' . $title . ', id: ' . $id);
   $stmt->bind_param('ssssssi', $title, $location, $year, $category, $description, $images_json, $id);
 
   if ($stmt->execute()) {
