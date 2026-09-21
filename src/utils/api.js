@@ -173,8 +173,20 @@ export async function deleteGalleryItem(id) {
 }
 
 // Chunked upload for large files (100MB+)
-const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
-const MAX_PARALLEL_CHUNKS = 4;
+// Dynamic chunk size based on file size
+const calculateChunkSize = (fileSize) => {
+  if (fileSize < 100 * 1024 * 1024) return 5 * 1024 * 1024;      // 5MB
+  if (fileSize < 500 * 1024 * 1024) return 10 * 1024 * 1024;     // 10MB
+  if (fileSize < 1 * 1024 * 1024 * 1024) return 25 * 1024 * 1024; // 25MB
+  return 50 * 1024 * 1024; // 50MB for huge files
+};
+
+// Dynamic parallel chunks based on file size
+const calculateParallelChunks = (fileSize) => {
+  if (fileSize > 1 * 1024 * 1024 * 1024) return 8;  // 1GB+ = 8 parallel
+  if (fileSize > 500 * 1024 * 1024) return 6;       // 500MB+ = 6 parallel
+  return 4; // Default = 4 parallel
+};
 
 export async function uploadFileChunked(file, endpoint, onProgress) {
   const token = getToken();
@@ -182,17 +194,33 @@ export async function uploadFileChunked(file, endpoint, onProgress) {
     'Authorization': token ? `Bearer ${token}` : '',
   };
 
+  const CHUNK_SIZE = calculateChunkSize(file.size);
+  const MAX_PARALLEL_CHUNKS = calculateParallelChunks(file.size);
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
   const uploadId = Date.now().toString();
   let uploadedBytes = 0;
+  const startTime = Date.now();
+
+  const formatBytes = (bytes) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+  };
+
+  const calculateSpeed = (bytes, timeMs) => {
+    if (timeMs === 0) return 0;
+    return (bytes / (timeMs / 1000)) / (1024 * 1024); // MB/s
+  };
 
   console.log('🔀 [CHUNKED] Starting chunked upload:', {
     fileName: file.name,
-    fileSize: file.size,
+    fileSize: formatBytes(file.size),
+    chunkSize: formatBytes(CHUNK_SIZE),
     totalChunks,
+    parallelChunks: MAX_PARALLEL_CHUNKS,
     uploadId,
-    chunkSize: CHUNK_SIZE,
-    endpoint,
     hasToken: !!getToken()
   });
 
@@ -236,8 +264,15 @@ export async function uploadFileChunked(file, endpoint, onProgress) {
 
       uploadedBytes += chunk.size;
       const progress = Math.round((uploadedBytes / file.size) * 100);
-      console.log(`🔀 Progress: ${progress}%`);
-      onProgress?.(progress);
+      const elapsedMs = Date.now() - startTime;
+      const speed = calculateSpeed(uploadedBytes, elapsedMs);
+      const remainingBytes = file.size - uploadedBytes;
+      const etaSeconds = remainingBytes > 0 ? Math.ceil(remainingBytes / (speed * 1024 * 1024)) : 0;
+
+      console.log(`🔀 Progress: ${progress}% | ${formatBytes(uploadedBytes)}/${formatBytes(file.size)} | Speed: ${speed.toFixed(1)} MB/s | ETA: ${etaSeconds}s`);
+
+      // Pass progress with metadata
+      onProgress?.({ progress, speed: parseFloat(speed.toFixed(1)), eta: etaSeconds });
 
       return data;
     } catch (error) {
