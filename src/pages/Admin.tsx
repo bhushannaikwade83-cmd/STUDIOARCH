@@ -41,29 +41,15 @@ const postFormDataWithProgress = (
   });
 };
 
-// Backend upload function - uses chunked uploads for files > 100MB
+// Backend upload function
 const uploadToBackend = async (file: File, fileType: string, onProgress?: (progress: number) => void) => {
   try {
-    const SIZE_100MB = 100 * 1024 * 1024;
-    const useChunkedUpload = file.size > SIZE_100MB;
-
-    console.log('[Upload] File:', file.name, 'Size:', formatFileSize(file.size), 'Chunked:', useChunkedUpload);
-
-    if (useChunkedUpload) {
-      console.log('[Upload] Using chunked upload for large file');
-      const result = await uploadFileChunked(file, '/chunked-upload', onProgress);
-      if (result.completed) {
-        console.log('[Upload] Chunked upload completed');
-        return { success: true, url: result.finalFile };
-      }
-      throw new Error('Chunked upload failed');
-    }
-
-    // Regular upload for smaller files
-    console.log('[Upload] Using regular upload');
+    console.log('[Upload] Starting upload for file:', file.name, 'Type:', fileType, 'Size:', file.size);
     const arrayBuffer = await file.arrayBuffer();
+    console.log('[Upload] ArrayBuffer ready, size:', arrayBuffer.byteLength);
     onProgress?.(50);
 
+    console.log('[Upload] Sending to: https://digitrixmedia.com/studioarch/api/upload');
     const safeName = file.name.replace(/[^\w.-]/g, '_');
     const response = await fetch('https://digitrixmedia.com/studioarch/api/upload', {
       method: 'POST',
@@ -75,16 +61,25 @@ const uploadToBackend = async (file: File, fileType: string, onProgress?: (progr
       body: arrayBuffer,
     });
 
+    console.log('[Upload] Response received. Status:', response.status, response.statusText);
     onProgress?.(100);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[Upload] HTTP Error:', response.status, errorText);
-      return { success: false, error: `Upload failed: ${response.statusText}` };
+      return { success: false, error: `Upload failed: ${response.statusText} - ${errorText}` };
     }
 
     const data = await response.json();
-    return data.success ? { success: true, url: data.url } : { success: false, error: data.error };
+    console.log('[Upload] Response data:', data);
+
+    if (data.success) {
+      console.log('[Upload] SUCCESS! URL:', data.url);
+      return { success: true, url: data.url };
+    } else {
+      console.error('[Upload] Server error:', data.error);
+      return { success: false, error: data.error };
+    }
   } catch (error) {
     console.error('[Upload] Exception:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Upload failed' };
@@ -94,7 +89,7 @@ import { useProjects, useJournalPosts, useContactMessages, useGallery, useEventV
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
-import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, getContactInfo, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo, uploadFileChunked } from '../utils/api';
+import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, getContactInfo, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo } from '../utils/api';
 
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB - videos are uploaded uncompressed
 const MAX_PROJECT_FILES = 20; // images + videos combined, per project
