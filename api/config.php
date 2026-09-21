@@ -1,4 +1,10 @@
 <?php
+// ============ CRITICAL: Set timeouts FIRST (before any processing) ============
+ini_set('max_execution_time', 600); // 10 minutes for large uploads
+ini_set('max_input_time', 600);     // 10 minutes for input
+ini_set('upload_max_filesize', '600M'); // 600MB max file
+ini_set('post_max_size', '600M');       // 600MB max POST
+
 // Database Configuration (Shared by all API endpoints)
 
 $db_host = 'localhost';

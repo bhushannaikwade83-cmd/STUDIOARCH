@@ -25,23 +25,23 @@
 # Only applies when PHP runs as an Apache module; on PHP-FPM/CGI these are
 # ignored and the same values must be set in cPanel > MultiPHP INI Editor.
 <IfModule mod_php.c>
-  php_value upload_max_filesize 500M
-  php_value post_max_size 512M
+  php_value upload_max_filesize 600M
+  php_value post_max_size 600M
   php_value max_execution_time 600
   php_value max_input_time 600
-  php_value memory_limit 512M
+  php_value memory_limit 1024M
 </IfModule>
 <IfModule mod_php7.c>
-  php_value upload_max_filesize 500M
-  php_value post_max_size 512M
+  php_value upload_max_filesize 600M
+  php_value post_max_size 600M
   php_value max_execution_time 600
   php_value max_input_time 600
-  php_value memory_limit 512M
+  php_value memory_limit 1024M
 </IfModule>
 <IfModule mod_php8.c>
-  php_value upload_max_filesize 500M
-  php_value post_max_size 512M
+  php_value upload_max_filesize 600M
+  php_value post_max_size 600M
   php_value max_execution_time 600
   php_value max_input_time 600
-  php_value memory_limit 512M
+  php_value memory_limit 1024M
 </IfModule>
