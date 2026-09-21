@@ -2109,7 +2109,7 @@ export default function Admin() {
                     </div>
                     <div>
                       <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Locations (one per line)</label>
-                      <textarea value={contactInfo.locations} onChange={e => setContactInfo(prev => ({ ...prev, locations: e.target.value }))}
+                      <textarea value={contactInfo.locations || ''} onChange={e => setContactInfo(prev => ({ ...prev, locations: e.target.value }))}
                         rows={4} className="w-full bg-white/10 border border-white/20 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-white/40 resize-none" />
                     </div>
                     <div>
