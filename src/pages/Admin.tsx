@@ -1710,15 +1710,17 @@ export default function Admin() {
 
                   <motion.button
                     type="submit"
-                    disabled={isUploadingProject}
-                    whileHover={isUploadingProject ? {} : { scale: 1.02 }}
+                    disabled={isUploadingProject || isCompressingProjectFiles}
+                    whileHover={isUploadingProject || isCompressingProjectFiles ? {} : { scale: 1.02 }}
                     className={`w-full px-6 py-3 rounded font-light uppercase tracking-widest text-sm flex items-center justify-center gap-2 ${
-                      isUploadingProject
+                      isUploadingProject || isCompressingProjectFiles
                         ? 'bg-stone-400 text-stone-600 cursor-not-allowed opacity-50'
                         : 'bg-white text-black hover:bg-stone-200'
                     }`}
                   >
-                    {isUploadingProject
+                    {isCompressingProjectFiles
+                      ? '📦 Compressing files...'
+                      : isUploadingProject
                       ? (uploadProgress > 0 ? `⏳ Uploading ${uploadProgress}%` : '⏳ Creating...')
                       : <><Plus size={16} /> Create Project</>}
                   </motion.button>
