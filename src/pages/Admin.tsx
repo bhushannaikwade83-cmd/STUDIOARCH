@@ -729,26 +729,7 @@ export default function Admin() {
       console.log('📸 Existing images:', editingProjectImages, 'videos:', editingProjectVideos);
       console.log('📁 Selected files:', selectedEditFiles?.length || 0);
 
-      const SIZE_100MB = 100 * 1024 * 1024;
-      const largeFiles = (selectedEditFiles || []).filter(f => f.size > SIZE_100MB);
-
-      // If any file > 100MB, upload chunked first
-      if (largeFiles.length > 0) {
-        console.log('📦 Large files detected, uploading chunked...');
-        for (const file of largeFiles) {
-          try {
-            await uploadFileChunked(file, '/chunked-upload', (progress) => {
-              setUploadProgress(progress);
-              console.log(`🔀 ${file.name}: ${progress}%`);
-            });
-            console.log('✅ Chunked upload complete:', file.name);
-          } catch (error) {
-            throw new Error(`Failed to upload ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-        }
-      }
-
-      // Create FormData for metadata + remaining small files
+      // Create FormData for multipart request with files
       const formData = new FormData();
       formData.append('name', editProjectData.title || '');
       formData.append('location', editProjectData.location || '');
@@ -758,17 +739,22 @@ export default function Admin() {
       formData.append('existingImages', JSON.stringify(editingProjectImages));
       formData.append('existingVideos', JSON.stringify(editingProjectVideos));
 
-      // Add only small files to FormData
-      const smallFiles = (selectedEditFiles || []).filter(f => f.size <= SIZE_100MB);
-      if (smallFiles.length > 0) {
-        console.log('📤 Uploading', smallFiles.length, 'small files with metadata');
-        for (const file of smallFiles) {
-          formData.append('files[]', file);
-          console.log('✅ Added small file:', file.name);
+      // Add any pending files
+      if (selectedEditFiles && selectedEditFiles.length > 0) {
+        console.log('📤 Adding', selectedEditFiles.length, 'new files to upload');
+        for (let i = 0; i < selectedEditFiles.length; i++) {
+          // The [] suffix is required: without it PHP keeps only the last
+          // file instead of building an array in $_FILES
+          formData.append('files[]', selectedEditFiles[i]);
+          console.log('✅ Added file:', selectedEditFiles[i].name);
         }
+      } else {
+        console.log('⚠️ No new files to upload');
       }
 
       const token = getToken();
+      // Use POST instead of PUT because PHP doesn't auto-parse multipart data for PUT!
+      // Add _method=PUT to indicate this is an update
       const result = await postFormDataWithProgress(
         `https://digitrixmedia.com/studioarch/api/projects?id=${id}&_method=PUT`,
         formData,
@@ -970,26 +956,7 @@ export default function Admin() {
     try {
       setIsUploadingProject(true);
 
-      const SIZE_100MB = 100 * 1024 * 1024;
-      const largeFiles = (selectedProjectFiles || []).filter(f => f.size > SIZE_100MB);
-
-      // If any file > 100MB, upload chunked first
-      if (largeFiles.length > 0) {
-        console.log('📦 Large files detected, uploading chunked...');
-        for (const file of largeFiles) {
-          try {
-            await uploadFileChunked(file, '/chunked-upload', (progress) => {
-              setUploadProgress(progress);
-              console.log(`🔀 ${file.name}: ${progress}%`);
-            });
-            console.log('✅ Chunked upload complete:', file.name);
-          } catch (error) {
-            throw new Error(`Failed to upload ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-        }
-      }
-
-      // Create FormData for metadata + small files
+      // Create FormData for multipart request with files
       const formData = new FormData();
       formData.append('name', newProjectData.name.trim());
       formData.append('location', newProjectData.location?.trim() || '');
@@ -999,12 +966,12 @@ export default function Admin() {
       formData.append('existingImages', JSON.stringify(newProjectImages));
       formData.append('existingVideos', JSON.stringify(newProjectVideos));
 
-      // Add only small files to FormData
-      const smallFiles = (selectedProjectFiles || []).filter(f => f.size <= SIZE_100MB);
-      if (smallFiles.length > 0) {
-        console.log('📤 Uploading', smallFiles.length, 'small files with metadata');
-        for (const file of smallFiles) {
-          formData.append('files[]', file);
+      // Add any pending files
+      if (selectedProjectFiles) {
+        for (let i = 0; i < selectedProjectFiles.length; i++) {
+          // The [] suffix is required: without it PHP keeps only the last
+          // file instead of building an array in $_FILES
+          formData.append('files[]', selectedProjectFiles[i]);
         }
       }
 
