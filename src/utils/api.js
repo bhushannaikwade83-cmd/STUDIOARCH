@@ -186,49 +186,87 @@ export async function uploadFileChunked(file, endpoint, onProgress) {
   const uploadId = Date.now().toString();
   let uploadedBytes = 0;
 
+  console.log('🔀 [CHUNKED] Starting chunked upload:', {
+    fileName: file.name,
+    fileSize: file.size,
+    totalChunks,
+    uploadId,
+    chunkSize: CHUNK_SIZE,
+    endpoint,
+    hasToken: !!getToken()
+  });
+
   // Upload chunks in parallel (4 at a time)
   const uploadChunk = async (chunkIndex) => {
-    const start = chunkIndex * CHUNK_SIZE;
-    const end = Math.min(start + CHUNK_SIZE, file.size);
-    const chunk = file.slice(start, end);
+    try {
+      const start = chunkIndex * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
 
-    const formData = new FormData();
-    formData.append('file', chunk);
-    formData.append('uploadId', uploadId);
-    formData.append('chunkIndex', chunkIndex);
-    formData.append('totalChunks', totalChunks);
-    formData.append('fileName', file.name);
+      console.log(`🔀 [CHUNK ${chunkIndex}] Uploading ${chunkIndex + 1}/${totalChunks}`, {
+        start, end, size: chunk.size
+      });
 
-    const url = `${API_BASE}${endpoint}`;
+      const formData = new FormData();
+      formData.append('file', chunk);
+      formData.append('uploadId', uploadId);
+      formData.append('chunkIndex', chunkIndex);
+      formData.append('totalChunks', totalChunks);
+      formData.append('fileName', file.name);
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Authorization': headers.Authorization },
-      body: formData,
-    });
+      const url = `${API_BASE}${endpoint}`;
+      console.log(`🔀 [CHUNK ${chunkIndex}] POST to:`, url);
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || `Upload failed: ${response.status}`);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Authorization': headers.Authorization },
+        body: formData,
+      });
+
+      console.log(`🔀 [CHUNK ${chunkIndex}] Response:`, response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`🔀 [CHUNK ${chunkIndex}] Error:`, errorText);
+        throw new Error(`${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log(`🔀 [CHUNK ${chunkIndex}] Success`);
+
+      uploadedBytes += chunk.size;
+      const progress = Math.round((uploadedBytes / file.size) * 100);
+      console.log(`🔀 Progress: ${progress}%`);
+      onProgress?.(progress);
+
+      return data;
+    } catch (error) {
+      console.error(`🔀 [CHUNK ${chunkIndex}] FAILED:`, error.message);
+      throw error;
     }
-
-    uploadedBytes += chunk.size;
-    const progress = Math.round((uploadedBytes / file.size) * 100);
-    onProgress?.(progress);
-
-    return response.json();
   };
 
   // Upload in batches of MAX_PARALLEL_CHUNKS
+  console.log(`🔀 [CHUNKED] Starting batch uploads`);
   const results = [];
   for (let i = 0; i < totalChunks; i += MAX_PARALLEL_CHUNKS) {
     const batch = [];
+    const batchIndices = [];
     for (let j = i; j < Math.min(i + MAX_PARALLEL_CHUNKS, totalChunks); j++) {
       batch.push(uploadChunk(j));
+      batchIndices.push(j);
     }
-    const batchResults = await Promise.all(batch);
-    results.push(...batchResults);
+    console.log(`🔀 [BATCH] Uploading chunks [${batchIndices.join(', ')}]`);
+    try {
+      const batchResults = await Promise.all(batch);
+      results.push(...batchResults);
+      console.log(`🔀 [BATCH] Completed`);
+    } catch (error) {
+      console.error(`🔀 [BATCH] Failed:`, error.message);
+      throw error;
+    }
   }
 
+  console.log('🔀 [CHUNKED] Complete');
   return results[results.length - 1]; // Return final response
 }
