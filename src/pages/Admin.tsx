@@ -176,8 +176,6 @@ export default function Admin() {
   const [isCompressingProjectFiles, setIsCompressingProjectFiles] = useState(false);
   const [isCompressingEditFiles, setIsCompressingEditFiles] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadSpeed, setUploadSpeed] = useState(0);
-  const [uploadEta, setUploadEta] = useState(0);
   const [projectFilePreviewUrls, setProjectFilePreviewUrls] = useState<string[]>([]);
   const [editFilePreviewUrls, setEditFilePreviewUrls] = useState<string[]>([]);
 
@@ -739,13 +737,9 @@ export default function Admin() {
         console.log('📦 Large files detected, uploading chunked...');
         for (const file of largeFiles) {
           try {
-            await uploadFileChunked(file, '/chunked-upload', (progressData) => {
-              const progress = typeof progressData === 'number' ? progressData : progressData.progress;
-              const speed = typeof progressData === 'number' ? 0 : (progressData.speed || 0);
-              const eta = typeof progressData === 'number' ? 0 : (progressData.eta || 0);
+            await uploadFileChunked(file, '/chunked-upload', (progress) => {
               setUploadProgress(progress);
-              setUploadSpeed(speed);
-              setUploadEta(eta);
+              console.log(`🔀 ${file.name}: ${progress}%`);
             });
             console.log('✅ Chunked upload complete:', file.name);
           } catch (error) {
@@ -984,13 +978,9 @@ export default function Admin() {
         console.log('📦 Large files detected, uploading chunked...');
         for (const file of largeFiles) {
           try {
-            await uploadFileChunked(file, '/chunked-upload', (progressData) => {
-              const progress = typeof progressData === 'number' ? progressData : progressData.progress;
-              const speed = typeof progressData === 'number' ? 0 : (progressData.speed || 0);
-              const eta = typeof progressData === 'number' ? 0 : (progressData.eta || 0);
+            await uploadFileChunked(file, '/chunked-upload', (progress) => {
               setUploadProgress(progress);
-              setUploadSpeed(speed);
-              setUploadEta(eta);
+              console.log(`🔀 ${file.name}: ${progress}%`);
             });
             console.log('✅ Chunked upload complete:', file.name);
           } catch (error) {
@@ -1747,8 +1737,8 @@ export default function Admin() {
                   {isUploadingProject && uploadProgress > 0 && (
                     <div className="mb-4">
                       <div className="flex justify-between text-xs text-stone-400 mb-1">
-                        <span>Uploading...</span>
-                        <span>{uploadProgress}% • {uploadSpeed.toFixed(1)} MB/s • ETA {uploadEta}s</span>
+                        <span>Uploading to server...</span>
+                        <span>{uploadProgress}%</span>
                       </div>
                       <div className="w-full h-2 bg-white/10 rounded overflow-hidden">
                         <div className="h-full bg-green-500 transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
@@ -1871,8 +1861,8 @@ export default function Admin() {
                             {isUploadingEdit && uploadProgress > 0 && (
                               <div className="mt-3">
                                 <div className="flex justify-between text-xs text-stone-400 mb-1">
-                                  <span>Uploading...</span>
-                                  <span>{uploadProgress}% • {uploadSpeed.toFixed(1)} MB/s • ETA {uploadEta}s</span>
+                                  <span>Uploading to server...</span>
+                                  <span>{uploadProgress}%</span>
                                 </div>
                                 <div className="w-full h-2 bg-white/10 rounded overflow-hidden">
                                   <div className="h-full bg-green-500 transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
