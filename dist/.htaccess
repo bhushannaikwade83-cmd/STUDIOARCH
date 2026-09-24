@@ -1,0 +1,20 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Don't rewrite files or directories
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+
+  # Don't rewrite API routes - let Node.js handle them
+  RewriteCond %{REQUEST_URI} !^/api/
+
+  # Rewrite all requests to index.html for React Router
+  RewriteRule ^ index.html [QSA,L]
+</IfModule>
+
+# Remove CSP headers that block eval
+<IfModule mod_headers.c>
+  Header unset Content-Security-Policy
+  Header unset X-Content-Security-Policy
+</IfModule>

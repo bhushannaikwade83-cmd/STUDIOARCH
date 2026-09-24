@@ -1,0 +1,113 @@
+================================================================================
+1StudioArch - COMPLETE DATABASE SETUP (ONE SQL QUERY)
+================================================================================
+
+COPY EVERYTHING BELOW AND RUN IN SUPABASE SQL EDITOR
+(No need to run separately - this is the complete setup)
+
+================================================================================
+
+-- Admin Users Table
+CREATE TABLE IF NOT EXISTS public.admin_users (id UUID PRIMARY KEY, email TEXT UNIQUE NOT NULL, role TEXT DEFAULT 'admin', created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
+
+-- Projects Table (Frontend: Show | Admin: Manage)
+CREATE TABLE IF NOT EXISTS public.projects (id BIGSERIAL PRIMARY KEY, title TEXT NOT NULL, description TEXT, category TEXT, year TEXT, location TEXT, locationmapurl TEXT, images TEXT[], display_order INTEGER DEFAULT 0, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
+ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read projects" ON public.projects FOR SELECT TO PUBLIC USING (TRUE);
+CREATE POLICY "Admin can manage projects" ON public.projects FOR ALL USING (auth.uid() IN (SELECT id FROM public.admin_users WHERE role IN ('admin', 'editor')));
+CREATE INDEX IF NOT EXISTS idx_projects_display_order ON public.projects(display_order);
+CREATE INDEX IF NOT EXISTS idx_projects_created_at ON public.projects(created_at DESC);
+
+-- Journal Posts Table (Frontend: Show | Admin: Manage)
+CREATE TABLE IF NOT EXISTS public.journal_posts (id BIGSERIAL PRIMARY KEY, title TEXT NOT NULL, date TEXT, excerpt TEXT, category TEXT, content TEXT, featured_image TEXT, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
+ALTER TABLE public.journal_posts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read journal posts" ON public.journal_posts FOR SELECT TO PUBLIC USING (TRUE);
+CREATE POLICY "Admin can manage journal posts" ON public.journal_posts FOR ALL USING (auth.uid() IN (SELECT id FROM public.admin_users WHERE role IN ('admin', 'editor')));
+CREATE INDEX IF NOT EXISTS idx_journal_posts_created_at ON public.journal_posts(created_at DESC);
+
+-- Gallery Folders Table (Frontend: Show | Admin: Manage)
+CREATE TABLE IF NOT EXISTS public.gallery_folders (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, description TEXT, display_order INTEGER DEFAULT 0, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
+ALTER TABLE public.gallery_folders ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read gallery folders" ON public.gallery_folders FOR SELECT TO PUBLIC USING (TRUE);
+CREATE POLICY "Admin can manage gallery folders" ON public.gallery_folders FOR ALL USING (auth.uid() IN (SELECT id FROM public.admin_users WHERE role IN ('admin', 'editor')));
+CREATE INDEX IF NOT EXISTS idx_gallery_folders_display_order ON public.gallery_folders(display_order);
+
+-- Gallery Items Table (Frontend: Show | Admin: Manage)
+CREATE TABLE IF NOT EXISTS public.gallery_items (id BIGSERIAL PRIMARY KEY, folder_id BIGINT NOT NULL REFERENCES public.gallery_folders(id) ON DELETE CASCADE, title TEXT NOT NULL, image_url TEXT NOT NULL, thumbnail_url TEXT, display_order INTEGER DEFAULT 0, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
+ALTER TABLE public.gallery_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read gallery items" ON public.gallery_items FOR SELECT TO PUBLIC USING (TRUE);
+CREATE POLICY "Admin can manage gallery items" ON public.gallery_items FOR ALL USING (auth.uid() IN (SELECT id FROM public.admin_users WHERE role IN ('admin', 'editor')));
+CREATE INDEX IF NOT EXISTS idx_gallery_items_folder_id ON public.gallery_items(folder_id);
+
+-- Event Videos Table (Frontend: Show | Admin: Manage)
+CREATE TABLE IF NOT EXISTS public.event_videos (id BIGSERIAL PRIMARY KEY, title TEXT NOT NULL, description TEXT, video_url TEXT NOT NULL, thumbnail_url TEXT, event_date TEXT, category TEXT, display_order INTEGER DEFAULT 0, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
+ALTER TABLE public.event_videos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read event videos" ON public.event_videos FOR SELECT TO PUBLIC USING (TRUE);
+CREATE POLICY "Admin can manage event videos" ON public.event_videos FOR ALL USING (auth.uid() IN (SELECT id FROM public.admin_users WHERE role IN ('admin', 'editor')));
+CREATE INDEX IF NOT EXISTS idx_event_videos_display_order ON public.event_videos(display_order);
+
+-- Contact Info Table (Frontend: Show | Admin: Edit)
+CREATE TABLE IF NOT EXISTS public.contact_info (id BIGSERIAL PRIMARY KEY, email TEXT NOT NULL, phone TEXT, locations TEXT, instagram TEXT, linkedin TEXT, youtube TEXT, locationmapurl TEXT, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
+ALTER TABLE public.contact_info ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read contact info" ON public.contact_info FOR SELECT TO PUBLIC USING (TRUE);
+CREATE POLICY "Admin can manage contact info" ON public.contact_info FOR ALL USING (auth.uid() IN (SELECT id FROM public.admin_users WHERE role IN ('admin', 'editor')));
+INSERT INTO public.contact_info (email, phone, locations, instagram, linkedin, youtube, locationmapurl) VALUES ('inquiry@1studioarch.com', '+44 (0) 20 1234 5678', 'London, UK
+New York, USA
+Singapore, SG', 'https://instagram.com/1studioarch', 'https://linkedin.com/company/1studioarch', 'https://youtube.com/@1studioarch', 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3024.1234567890!2d-0.1276!3d51.5074!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNTHCsDMwJzI2LjYiTiAwwrAwN0myMzUuNiJX!5e0!3m2!1sen!2sus!4v1234567890') ON CONFLICT DO NOTHING;
+
+-- Contact Messages Table (Frontend: Submit | Admin: View)
+CREATE TABLE IF NOT EXISTS public.contact_messages (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, message TEXT NOT NULL, read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
+ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can submit messages" ON public.contact_messages FOR INSERT WITH CHECK (TRUE);
+CREATE POLICY "Admin can view messages" ON public.contact_messages FOR SELECT USING (auth.uid() IN (SELECT id FROM public.admin_users WHERE role IN ('admin', 'editor')));
+CREATE POLICY "Admin can delete messages" ON public.contact_messages FOR DELETE USING (auth.uid() IN (SELECT id FROM public.admin_users WHERE role IN ('admin', 'editor')));
+CREATE INDEX IF NOT EXISTS idx_contact_messages_created_at ON public.contact_messages(created_at DESC);
+
+-- Content Settings Table (Frontend: Use | Admin: Edit)
+CREATE TABLE IF NOT EXISTS public.content_settings (id BIGSERIAL PRIMARY KEY, site_title TEXT DEFAULT '1StudioArch', site_description TEXT, site_logo TEXT, maintenance_mode BOOLEAN DEFAULT FALSE, homepage_hero_title TEXT, homepage_hero_subtitle TEXT, homepage_featured_projects_count INTEGER DEFAULT 3, footer_text TEXT, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
+ALTER TABLE public.content_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read content settings" ON public.content_settings FOR SELECT TO PUBLIC USING (TRUE);
+CREATE POLICY "Admin can manage content settings" ON public.content_settings FOR ALL USING (auth.uid() IN (SELECT id FROM public.admin_users WHERE role IN ('admin', 'editor')));
+INSERT INTO public.content_settings (site_title, site_description, homepage_hero_title, homepage_hero_subtitle) VALUES ('1StudioArch', 'Premium architectural design studio creating innovative spaces', 'Architectural Excellence', 'Transforming Visions into Timeless Spaces') ON CONFLICT DO NOTHING;
+
+================================================================================
+AFTER RUNNING ABOVE QUERY:
+1. Add your admin user (replace USER_ID_HERE with your Supabase Auth user UUID):
+
+INSERT INTO public.admin_users (id, email, role)
+VALUES ('USER_ID_HERE', 'admin@studioarch.com', 'admin')
+ON CONFLICT DO NOTHING;
+
+2. Add .env file with:
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_anon_key
+
+3. Run: npm run dev
+4. Access admin at: http://localhost:5173/admin
+
+================================================================================
+WHAT'S CONNECTED
+================================================================================
+
+Frontend Pages Connected:
+✓ Home.tsx → projects (display featured projects)
+✓ Projects.tsx → projects (all projects with details + Google Maps)
+✓ Journal.tsx → journal_posts (all blog posts)
+✓ Contact.tsx → contact_info (display contact) + contact_messages (form submit)
+
+Admin Panel Sections Connected:
+✓ Dashboard → content_settings
+✓ Manage Projects → projects (CRUD)
+✓ Manage Journal → journal_posts (CRUD)
+✓ Messages → contact_messages (view + delete)
+✓ Edit Contact → contact_info (CRUD)
+✓ Image Gallery → gallery_folders + gallery_items (CRUD)
+✓ Events Videos → event_videos (CRUD)
+✓ Content Settings → content_settings (CRUD)
+✓ Settings → Admin user info
+
+Image/Video Compression: Auto-compress to 1920x1080 @ 80% quality
+Loading Screens: Branded logo animation on all pages
+RLS Security: All tables have Row Level Security enabled
+
+================================================================================

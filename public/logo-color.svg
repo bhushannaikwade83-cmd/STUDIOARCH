@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 155" width="520" height="155">
+  <!-- Orange icon block -->
+  <rect x="0" y="0" width="140" height="140" fill="#F05A1E" rx="4"/>
+
+  <!-- Stylized "1" mark — white architectural pillars -->
+  <g fill="white">
+    <!-- Left column -->
+    <path d="M32 110 L32 48 L50 35 L50 110 Z"/>
+    <!-- Middle angled -->
+    <path d="M54 110 L54 55 L72 42 L72 110 Z"/>
+    <!-- Right column -->
+    <path d="M76 110 L76 62 L94 49 L94 110 Z"/>
+    <!-- Base line -->
+    <rect x="28" y="108" width="70" height="7" rx="2"/>
+  </g>
+
+  <!-- "1STUDIO" text -->
+  <text x="158" y="72" font-family="'Arial Black', Arial, sans-serif" font-weight="900" font-size="54" fill="#1B5E2F" letter-spacing="-1">1STUDIO</text>
+  <!-- "ARCH" text -->
+  <text x="158" y="124" font-family="'Arial Black', Arial, sans-serif" font-weight="900" font-size="54" fill="#1B5E2F" letter-spacing="-1">ARCH</text>
+  <!-- Tagline -->
+  <text x="158" y="147" font-family="Arial, sans-serif" font-size="11.5" fill="#1B5E2F" letter-spacing="0.8">ARCHITECT  |  INTERIOR DESIGNER  |  VALUER  |  PMC</text>
+</svg>
