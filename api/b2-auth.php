@@ -152,11 +152,15 @@ try {
 
   error_log('[B2-AUTH] ✅ Got upload URL');
 
-  // Return to frontend - only upload-specific auth token, not account auth token
+  // Return to frontend
+  // - authToken: storage API auth token (for multipart operations like b2_start_large_file)
+  // - uploadUrl: simple upload URL (for direct file uploads)
+  // - uploadAuthToken: simple upload auth token (for direct file uploads)
   echo json_encode([
     'success' => true,
     'uploadUrl' => $uploadUrlData['uploadUrl'],
-    'authToken' => $uploadUrlData['authorizationToken'],
+    'uploadAuthToken' => $uploadUrlData['authorizationToken'],
+    'authToken' => $b2AuthToken,
     'bucketName' => $b2_bucket_name,
     'downloadUrl' => $downloadUrl,
     'apiUrl' => $b2ApiUrl

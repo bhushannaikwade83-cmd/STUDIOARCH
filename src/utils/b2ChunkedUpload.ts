@@ -6,6 +6,7 @@ const CHUNK_SIZE = 100 * 1024 * 1024; // 100MB chunks
 
 interface B2AuthData {
   uploadUrl: string;
+  uploadAuthToken: string;
   authToken: string;
   bucketName: string;
   downloadUrl: string;
