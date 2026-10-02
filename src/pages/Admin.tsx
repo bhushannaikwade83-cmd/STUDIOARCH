@@ -1,3 +1,4 @@
+import { chunkedUpload } from '../utils/chunkedUpload';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -42,49 +43,9 @@ const postFormDataWithProgress = (
 };
 
 // Backend upload function
-const uploadToBackend = async (file: File, fileType: string, onProgress?: (progress: number) => void) => {
-  try {
-    console.log('[Upload] Starting upload for file:', file.name, 'Type:', fileType, 'Size:', file.size);
-    const arrayBuffer = await file.arrayBuffer();
-    console.log('[Upload] ArrayBuffer ready, size:', arrayBuffer.byteLength);
-    onProgress?.(50);
+const uploadToBackend = (file: File, fileType: string, onProgress?: (progress: number) => void) =>
+  chunkedUpload(file, fileType, onProgress);
 
-    console.log('[Upload] Sending to: https://digitrixmedia.com/studioarch/api/upload');
-    const safeName = file.name.replace(/[^\w.-]/g, '_');
-    const response = await fetch('https://digitrixmedia.com/studioarch/api/upload', {
-      method: 'POST',
-      headers: {
-        'X-File-Name': safeName,
-        'X-File-Type': fileType,
-        'Content-Type': file.type,
-      },
-      body: arrayBuffer,
-    });
-
-    console.log('[Upload] Response received. Status:', response.status, response.statusText);
-    onProgress?.(100);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Upload] HTTP Error:', response.status, errorText);
-      return { success: false, error: `Upload failed: ${response.statusText} - ${errorText}` };
-    }
-
-    const data = await response.json();
-    console.log('[Upload] Response data:', data);
-
-    if (data.success) {
-      console.log('[Upload] SUCCESS! URL:', data.url);
-      return { success: true, url: data.url };
-    } else {
-      console.error('[Upload] Server error:', data.error);
-      return { success: false, error: data.error };
-    }
-  } catch (error) {
-    console.error('[Upload] Exception:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Upload failed' };
-  }
-};
 import { useProjects, useJournalPosts, useContactMessages, useGallery, useEventVideos, useContentSettings } from '../hooks/useMariaDbData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
