@@ -1,56 +1,36 @@
-// B2 Direct Upload - Frontend handles B2 auth directly, no PHP proxy
-// Uses Vite environment variables
+// B2 Upload via Vercel Function
+// Frontend → Vercel Function → B2 Auth → B2 Upload
 
-const B2_KEY_ID = import.meta.env.VITE_B2_KEY_ID;
-const B2_APP_KEY = import.meta.env.VITE_B2_APP_KEY;
-const B2_BUCKET_ID = import.meta.env.VITE_B2_BUCKET_ID;
-const B2_BUCKET_NAME = import.meta.env.VITE_B2_BUCKET_NAME;
+const API_BASE = import.meta.env.VITE_API_URL || 'https://digitrixmedia.com';
 
 export async function uploadToB2(file, onProgress) {
   try {
-    console.log('🚀 [B2] Direct B2 upload (no PHP):', {
+    console.log('🚀 [B2] Starting upload via Vercel:', {
       fileName: file.name,
       fileSize: (file.size / 1024 / 1024).toFixed(2) + ' MB'
     });
 
-    // Step 1: Authorize with B2 directly from frontend
-    console.log('🔐 [B2] Authorizing with B2...');
-    const authHeader = 'Basic ' + btoa(B2_KEY_ID + ':' + B2_APP_KEY);
-
-    const authResponse = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
+    // Step 1: Get auth from Vercel function
+    console.log('🔐 [B2] Getting auth from Vercel...');
+    const authResponse = await fetch(`${API_BASE}/api/b2-auth`, {
       method: 'POST',
       headers: {
-        'Authorization': authHeader
+        'Content-Type': 'application/json'
       }
     });
 
     if (!authResponse.ok) {
-      throw new Error(`B2 auth failed: ${authResponse.status}`);
+      throw new Error(`Auth failed: ${authResponse.status}`);
     }
 
     const authData = await authResponse.json();
-    const authToken = authData.authorizationToken;
-    const apiUrl = authData.apiUrl;
-    const downloadUrl = authData.downloadUrl;
+    if (!authData.success) {
+      throw new Error(authData.error || 'Auth failed');
+    }
 
-    console.log('✅ [B2] Authorized');
+    console.log('✅ [B2] Got auth from Vercel');
 
-    // Step 2: Get upload URL from B2
-    console.log('📍 [B2] Getting upload URL...');
-    const uploadUrlResponse = await fetch(`${apiUrl}/b2api/v2/b2_get_upload_url`, {
-      method: 'POST',
-      headers: {
-        'Authorization': authToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ bucketId: B2_BUCKET_ID })
-    });
-
-    const uploadUrlData = await uploadUrlResponse.json();
-    const uploadUrl = uploadUrlData.uploadUrl;
-    const uploadToken = uploadUrlData.authorizationToken;
-
-    // Step 3: Calculate SHA1
+    // Step 2: Calculate SHA1
     console.log('🔢 [B2] Calculating SHA1...');
     const fileBuffer = await file.arrayBuffer();
     const hashBuffer = await crypto.subtle.digest('SHA-1', fileBuffer);
@@ -58,14 +38,14 @@ export async function uploadToB2(file, onProgress) {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
-    // Step 4: Upload directly to B2
-    console.log('📤 [B2] Uploading directly to B2...');
+    // Step 3: Upload to B2
+    console.log('📤 [B2] Uploading to B2...');
     const fileKey = `uploads/${new Date().toISOString().split('T')[0]}/${Date.now()}-${file.name}`;
 
-    const uploadResponse = await fetch(uploadUrl, {
+    const uploadResponse = await fetch(authData.uploadUrl, {
       method: 'POST',
       headers: {
-        'Authorization': uploadToken,
+        'Authorization': authData.authToken,
         'X-Bz-File-Name': fileKey,
         'X-Bz-Content-Sha1': sha1,
         'Content-Type': file.type || 'application/octet-stream'
@@ -74,12 +54,12 @@ export async function uploadToB2(file, onProgress) {
     });
 
     if (!uploadResponse.ok) {
-      const errorData = await uploadResponse.json().catch(() => ({}));
-      throw new Error(errorData.message || `B2 upload failed: ${uploadResponse.status}`);
+      const error = await uploadResponse.json().catch(() => ({}));
+      throw new Error(error.message || `Upload failed: ${uploadResponse.status}`);
     }
 
     const uploadResult = await uploadResponse.json();
-    const publicUrl = `${downloadUrl}/file/${B2_BUCKET_NAME}/${uploadResult.fileName}`;
+    const publicUrl = `${authData.downloadUrl}/file/${authData.bucketName}/${uploadResult.fileName}`;
 
     console.log('✅ [B2] Upload complete:', publicUrl);
     onProgress?.(100);
