@@ -29,20 +29,21 @@ async function initiateB2Upload(
   fileName: string,
   fileSize: number
 ): Promise<string> {
-  // Start large file upload
-  const response = await fetch(`${auth.apiUrl}/b2api/v2/b2_start_large_file`, {
+  // Start large file upload via PHP proxy (B2 API doesn't allow direct browser access)
+  const response = await fetch(`${API_BASE}/studioarch/api/b2-initiate`, {
     method: 'POST',
     headers: {
-      'Authorization': auth.authToken,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
+      authToken: auth.authToken,
+      apiUrl: auth.apiUrl,
       bucketId: import.meta.env.VITE_B2_BUCKET_ID,
-      fileName: `uploads/${new Date().toISOString().split('T')[0]}/${Date.now()}-${fileName}`,
-      contentType: 'application/octet-stream'
+      fileName: `uploads/${new Date().toISOString().split('T')[0]}/${Date.now()}-${fileName}`
     })
   });
 
+  if (!response.ok) throw new Error(`Initiate failed: ${response.status}`);
   const data = await response.json();
   return data.fileId;
 }
@@ -53,35 +54,21 @@ async function uploadChunk(
   partNumber: number,
   chunk: Blob
 ): Promise<string> {
-  // Calculate SHA1 for chunk
-  const buffer = await chunk.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest('SHA-1', buffer);
-  const sha1 = Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+  // Upload chunk via PHP proxy (B2 API doesn't allow direct browser access)
+  const formData = new FormData();
+  formData.append('chunk', chunk);
+  formData.append('fileId', fileId);
+  formData.append('partNumber', partNumber.toString());
+  formData.append('authToken', auth.authToken);
+  formData.append('apiUrl', auth.apiUrl);
 
-  // Get upload URL for this part
-  const urlResponse = await fetch(`${auth.apiUrl}/b2api/v2/b2_get_upload_part_url`, {
+  const uploadResponse = await fetch(`${API_BASE}/studioarch/api/b2-upload-part`, {
     method: 'POST',
     headers: {
-      'Authorization': auth.authToken,
-      'Content-Type': 'application/json'
+      'X-File-ID': fileId,
+      'X-Part-Number': partNumber.toString()
     },
-    body: JSON.stringify({ fileId })
-  });
-
-  const urlData = await urlResponse.json();
-
-  // Upload chunk
-  const uploadResponse = await fetch(urlData.uploadUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': urlData.authorizationToken,
-      'X-Bz-Part-Number': partNumber.toString(),
-      'X-Bz-Content-Sha1': sha1,
-      'Content-Type': 'application/octet-stream'
-    },
-    body: buffer
+    body: formData
   });
 
   if (!uploadResponse.ok) throw new Error(`Chunk upload failed: ${uploadResponse.status}`);
@@ -95,17 +82,21 @@ async function finishB2Upload(
   fileId: string,
   partShas: string[]
 ): Promise<{ fileName: string; url: string }> {
-  const response = await fetch(`${auth.apiUrl}/b2api/v2/b2_finish_large_file`, {
+  // Finish upload via PHP proxy (B2 API doesn't allow direct browser access)
+  const response = await fetch(`${API_BASE}/studioarch/api/b2-finish`, {
     method: 'POST',
     headers: {
-      'Authorization': auth.authToken,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
       fileId,
-      partSha1Array: partShas
+      partShas,
+      authToken: auth.authToken,
+      apiUrl: auth.apiUrl
     })
   });
+
+  if (!response.ok) throw new Error(`Finish failed: ${response.status}`);
 
   const result = await response.json();
   const url = `${auth.downloadUrl}/file/${auth.bucketName}/${result.fileName}`;
