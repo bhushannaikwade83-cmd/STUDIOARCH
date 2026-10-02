@@ -35,18 +35,42 @@ try {
   // Authorize with B2 using cURL
   error_log('[CREATE] Authorizing with B2...');
 
+  error_log('[CREATE] B2 Key ID length: ' . strlen($b2_key_id));
+  error_log('[CREATE] B2 App Key length: ' . strlen($b2_app_key));
+
   $ch = curl_init('https://api.backblazeb2.com/b2api/v2/b2_authorize_account');
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-  curl_setopt($ch, CURLOPT_POST, true);
-  curl_setopt($ch, CURLOPT_USERPWD, $b2_key_id . ':' . $b2_app_key);
-  curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-  curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-  curl_setopt($ch, CURLOPT_ENCODING, '');
+
+  // Manual Basic Auth header (more reliable)
+  $auth_string = base64_encode($b2_key_id . ':' . $b2_app_key);
+  error_log('[CREATE] Auth header length: ' . strlen($auth_string));
+
+  curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_HTTPHEADER => [
+      'Authorization: Basic ' . $auth_string,
+      'Content-Length: 0'
+    ],
+    CURLOPT_POSTFIELDS => '',
+    CURLOPT_TIMEOUT => 30,
+    CURLOPT_CONNECTTIMEOUT => 10,
+    CURLOPT_SSL_VERIFYPEER => false,
+    CURLOPT_SSL_VERIFYHOST => 0,
+    CURLOPT_VERBOSE => false
+  ]);
 
   $authResponse = curl_exec($ch);
   $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
   $curlError = curl_error($ch);
+  $curlInfo = curl_getinfo($ch);
+
+  error_log('[CREATE] cURL info: ' . json_encode([
+    'http_code' => $httpCode,
+    'url' => $curlInfo['url'] ?? '',
+    'content_type' => $curlInfo['content_type'] ?? '',
+    'error' => $curlError ?: 'NONE'
+  ]));
+
   curl_close($ch);
 
   if ($curlError) {
@@ -54,9 +78,13 @@ try {
     throw new Exception('B2 curl error: ' . $curlError);
   }
 
-  if (!$authResponse || $httpCode !== 200) {
-    error_log('[CREATE] B2 auth failed. HTTP: ' . $httpCode);
-    error_log('[CREATE] Response: ' . substr($authResponse, 0, 500));
+  if (!$authResponse) {
+    error_log('[CREATE] B2 returned empty response');
+    throw new Exception('B2 returned empty response');
+  }
+
+  if ($httpCode !== 200) {
+    error_log('[CREATE] B2 HTTP ' . $httpCode . ': ' . substr($authResponse, 0, 500));
     throw new Exception('B2 authorization failed: ' . $httpCode);
   }
 
