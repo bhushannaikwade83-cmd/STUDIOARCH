@@ -735,8 +735,7 @@ export default function Admin() {
       formData.append('existingImages', JSON.stringify(editingProjectImages));
       formData.append('existingVideos', JSON.stringify(editingProjectVideos));
 
-      // Split files: B2 for large (>100MB), Server for small
-      const b2Images: string[] = [];
+      // B2 for large videos only (images stay on server)
       const b2Videos: string[] = [];
       const serverFiles: File[] = [];
       const SIZE_100MB = 100 * 1024 * 1024;
@@ -744,23 +743,21 @@ export default function Admin() {
       if (selectedEditFiles && selectedEditFiles.length > 0) {
         console.log('📤 Processing', selectedEditFiles.length, 'files');
         for (const file of selectedEditFiles) {
-          if (file.size > SIZE_100MB) {
-            console.log(`📦 Large file: ${file.name} (${formatFileSize(file.size)}) → B2`);
+          // Only videos > 100MB go to B2
+          if (file.type.startsWith('video/') && file.size > SIZE_100MB) {
+            console.log(`🎬 Large video: ${file.name} (${formatFileSize(file.size)}) → B2`);
             try {
               const b2Result = await uploadToB2(file, (progress) => {
                 setUploadProgress(progress);
               });
-              if (file.type.startsWith('image/')) {
-                b2Images.push(b2Result.url);
-              } else if (file.type.startsWith('video/')) {
-                b2Videos.push(b2Result.url);
-              }
-              console.log('✅ B2 upload complete:', b2Result.url);
+              b2Videos.push(b2Result.url);
+              console.log('✅ B2 video upload complete:', b2Result.url);
             } catch (error) {
               throw new Error(`Failed to upload ${file.name} to B2: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
           } else {
-            console.log(`📤 Small file: ${file.name} (${formatFileSize(file.size)}) → Server`);
+            // All images and small videos go to server
+            console.log(`📤 ${file.type.startsWith('image/') ? 'Image' : 'Video'}: ${file.name} (${formatFileSize(file.size)}) → Server`);
             serverFiles.push(file);
           }
         }
@@ -768,11 +765,10 @@ export default function Admin() {
         console.log('⚠️ No new files to upload');
       }
 
-      // Add B2 URLs to FormData
-      if (b2Images.length > 0) formData.append('b2Images', JSON.stringify(b2Images));
+      // Add B2 URLs to FormData (videos only)
       if (b2Videos.length > 0) formData.append('b2Videos', JSON.stringify(b2Videos));
 
-      // Add server files
+      // Add server files (images + small videos)
       for (const file of serverFiles) {
         formData.append('files[]', file);
       }
@@ -991,41 +987,37 @@ export default function Admin() {
       formData.append('existingImages', JSON.stringify(newProjectImages));
       formData.append('existingVideos', JSON.stringify(newProjectVideos));
 
-      // Split files: B2 for large (>100MB), Server for small
-      const b2Images: string[] = [];
+      // B2 for large videos only (images stay on server)
       const b2Videos: string[] = [];
       const serverFiles: File[] = [];
       const SIZE_100MB = 100 * 1024 * 1024;
 
       if (selectedProjectFiles) {
         for (const file of selectedProjectFiles) {
-          if (file.size > SIZE_100MB) {
-            console.log(`📦 Large file detected: ${file.name} (${formatFileSize(file.size)}) → B2`);
+          // Only videos > 100MB go to B2
+          if (file.type.startsWith('video/') && file.size > SIZE_100MB) {
+            console.log(`🎬 Large video: ${file.name} (${formatFileSize(file.size)}) → B2`);
             try {
               const b2Result = await uploadToB2(file, (progress) => {
                 setUploadProgress(progress);
               });
-              if (file.type.startsWith('image/')) {
-                b2Images.push(b2Result.url);
-              } else if (file.type.startsWith('video/')) {
-                b2Videos.push(b2Result.url);
-              }
-              console.log('✅ B2 upload complete:', b2Result.url);
+              b2Videos.push(b2Result.url);
+              console.log('✅ B2 video upload complete:', b2Result.url);
             } catch (error) {
               throw new Error(`Failed to upload ${file.name} to B2: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
           } else {
-            console.log(`📤 Small file: ${file.name} (${formatFileSize(file.size)}) → Server`);
+            // All images and small videos go to server
+            console.log(`📤 ${file.type.startsWith('image/') ? 'Image' : 'Video'}: ${file.name} (${formatFileSize(file.size)}) → Server`);
             serverFiles.push(file);
           }
         }
       }
 
-      // Add B2 URLs to FormData
-      if (b2Images.length > 0) formData.append('b2Images', JSON.stringify(b2Images));
+      // Add B2 URLs to FormData (videos only)
       if (b2Videos.length > 0) formData.append('b2Videos', JSON.stringify(b2Videos));
 
-      // Add server files
+      // Add server files (images + small videos)
       for (const file of serverFiles) {
         formData.append('files[]', file);
       }
