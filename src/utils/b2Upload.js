@@ -1,12 +1,9 @@
-// B2 Storage Upload Utility - uses PHP proxy to bypass CORS
+// B2 Storage Upload Utility - Direct B2 API calls
 
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/studioarch/api`
-  : 'https://digitrixmedia.com/studioarch/api';
-
+const B2_KEY_ID = import.meta.env.VITE_B2_KEY_ID;
+const B2_APP_KEY = import.meta.env.VITE_B2_APPLICATION_KEY;
 const B2_BUCKET_NAME = import.meta.env.VITE_B2_BUCKET_NAME;
-
-import { getToken } from './auth.js';
+const B2_BUCKET_ID = import.meta.env.VITE_B2_BUCKET_ID;
 
 export async function uploadToB2(file, onProgress) {
   try {
@@ -16,46 +13,78 @@ export async function uploadToB2(file, onProgress) {
       bucketName: B2_BUCKET_NAME
     });
 
-    const token = getToken();
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('fileName', file.name);
+    // Step 1: Authorize with B2
+    console.log('🔐 [B2] Authorizing...');
+    const authHeader = 'Basic ' + btoa(B2_KEY_ID + ':' + B2_APP_KEY);
 
-    // Upload to backend proxy (bypasses CORS)
-    console.log('📤 [B2] Uploading via PHP proxy...');
-
-    const response = await fetch(`${API_BASE}/b2-proxy`, {
+    const authResponse = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
       method: 'POST',
       headers: {
-        'Authorization': token ? `Bearer ${token}` : ''
-      },
-      body: formData
+        'Authorization': authHeader
+      }
     });
 
-    console.log('📥 [B2] Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ [B2] Upload failed:', errorText);
-      throw new Error(`B2 upload failed: ${response.status} - ${errorText}`);
+    if (!authResponse.ok) {
+      throw new Error(`B2 auth failed: ${authResponse.status}`);
     }
 
-    const result = await response.json();
+    const authData = await authResponse.json();
+    const authToken = authData.authorizationToken;
+    const apiUrl = authData.apiUrl;
 
-    if (!result.success) {
-      throw new Error(result.error || 'B2 upload error');
+    console.log('✅ [B2] Authorized');
+
+    // Step 2: Get upload URL
+    console.log('📍 [B2] Getting upload URL...');
+    const uploadUrlResponse = await fetch(`${apiUrl}/b2api/v2/b2_get_upload_url`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ bucketId: B2_BUCKET_ID })
+    });
+
+    const uploadUrlData = await uploadUrlResponse.json();
+    const uploadUrl = uploadUrlData.uploadUrl;
+    const uploadToken = uploadUrlData.authorizationToken;
+
+    // Step 3: Calculate SHA1
+    const fileBuffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-1', fileBuffer);
+    const sha1 = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    // Step 4: Upload file
+    console.log('📤 [B2] Uploading to B2...');
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': uploadToken,
+        'X-Bz-File-Name': file.name,
+        'X-Bz-Content-Sha1': sha1,
+        'Content-Type': 'application/octet-stream'
+      },
+      body: file
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`B2 upload failed: ${uploadResponse.status}`);
     }
 
-    console.log('✅ [B2] Upload complete:', result.url);
+    const uploadResult = await uploadResponse.json();
+    const fileUrl = `https://f000.backblazeb2.com/file/${B2_BUCKET_NAME}/${uploadResult.fileName}`;
 
+    console.log('✅ [B2] Upload complete:', fileUrl);
     onProgress?.(100);
 
     return {
       success: true,
-      fileId: result.fileId,
-      fileName: result.fileName,
-      url: result.url,
-      size: result.size
+      fileId: uploadResult.fileId,
+      fileName: uploadResult.fileName,
+      url: fileUrl,
+      size: uploadResult.contentLength
     };
 
   } catch (error) {
