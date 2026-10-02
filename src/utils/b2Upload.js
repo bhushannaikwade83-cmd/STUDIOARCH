@@ -10,9 +10,9 @@ export async function uploadToB2(file, onProgress) {
       fileSize: (file.size / 1024 / 1024).toFixed(2) + ' MB'
     });
 
-    // Step 1: Get auth from Vercel function
-    console.log('🔐 [B2] Getting auth from Vercel...');
-    const authResponse = await fetch(`${API_BASE}/api/b2-auth`, {
+    // Step 1: Get auth from PHP backend
+    console.log('🔐 [B2] Getting auth from PHP...');
+    const authResponse = await fetch(`${API_BASE}/studioarch/api/b2-auth`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -28,7 +28,7 @@ export async function uploadToB2(file, onProgress) {
       throw new Error(authData.error || 'Auth failed');
     }
 
-    console.log('✅ [B2] Got auth from Vercel');
+    console.log('✅ [B2] Got auth from PHP');
 
     // Step 2: Calculate SHA1
     console.log('🔢 [B2] Calculating SHA1...');
