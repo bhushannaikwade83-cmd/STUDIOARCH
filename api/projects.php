@@ -195,23 +195,12 @@ if ($method === 'GET') {
   $existingVideos = $_POST['existingVideos'] ?? null;
   $existingVideosArray = $existingVideos ? json_decode($existingVideos, true) : [];
 
-  // Get B2 URLs (if any) - frontend uploads large files to B2 directly
-  $b2Images = $_POST['b2Images'] ?? null;
-  $b2ImagesArray = $b2Images ? json_decode($b2Images, true) : [];
-  $b2Videos = $_POST['b2Videos'] ?? null;
-  $b2VideosArray = $b2Videos ? json_decode($b2Videos, true) : [];
-
   // Process newly uploaded files (returns images and videos separately)
   $uploadedUrls = processUploadedFiles('files');
 
-  // Combine existing, B2, and newly uploaded files
-  $images = array_merge($existingImagesArray, $b2ImagesArray, $uploadedUrls['images']);
-  $videos = array_merge($existingVideosArray, $b2VideosArray, $uploadedUrls['videos']);
-
-  error_log('[B2] POST: images=' . count($images) . ' (existing: ' . count($existingImagesArray)
-    . ', B2: ' . count($b2ImagesArray) . ', uploaded: ' . count($uploadedUrls['images']) . ')');
-  error_log('[B2] POST: videos=' . count($videos) . ' (existing: ' . count($existingVideosArray)
-    . ', B2: ' . count($b2VideosArray) . ', uploaded: ' . count($uploadedUrls['videos']) . ')');
+  // Combine existing and new, keeping images and videos in their own columns
+  $images = array_merge($existingImagesArray, $uploadedUrls['images']);
+  $videos = array_merge($existingVideosArray, $uploadedUrls['videos']);
 
   if (!$title) {
     http_response_code(400);
@@ -314,22 +303,15 @@ if ($method === 'GET') {
     $existingVideosArray = json_decode($existingProject['videos'] ?? '[]', true) ?: [];
   }
 
-  // Get B2 URLs (if any) - frontend uploads large files to B2 directly
-  $b2Images = $_POST['b2Images'] ?? null;
-  $b2ImagesArray = $b2Images ? json_decode($b2Images, true) : [];
-  $b2Videos = $_POST['b2Videos'] ?? null;
-  $b2VideosArray = $b2Videos ? json_decode($b2Videos, true) : [];
-
   error_log('[DEBUG] Existing images: ' . count($existingImagesArray) . ', videos: ' . count($existingVideosArray));
-  error_log('[B2] PUT: B2 images: ' . count($b2ImagesArray) . ', B2 videos: ' . count($b2VideosArray));
 
   // Process newly uploaded files (images and videos come back separately)
   $uploadedUrls = processUploadedFiles('files');
   error_log('[DEBUG] Newly uploaded - images: ' . count($uploadedUrls['images']) . ', videos: ' . count($uploadedUrls['videos']));
 
-  // Combine existing, B2, and newly uploaded (APPEND, don't replace)
-  $allImages = array_merge($existingImagesArray, $b2ImagesArray, $uploadedUrls['images']);
-  $allVideos = array_merge($existingVideosArray, $b2VideosArray, $uploadedUrls['videos']);
+  // Combine existing and new (APPEND, don't replace)
+  $allImages = array_merge($existingImagesArray, $uploadedUrls['images']);
+  $allVideos = array_merge($existingVideosArray, $uploadedUrls['videos']);
 
   // JSON_UNESCAPED_SLASHES keeps URLs readable in the database
   $images_json = json_encode($allImages ?: [], JSON_UNESCAPED_SLASHES);
