@@ -39,20 +39,32 @@ try {
 
   $ch = curl_init();
   curl_setopt($ch, CURLOPT_URL, 'https://api.backblazeb2.com/b2api/v2/b2_authorize_account');
-  curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Basic $auth_string"]);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Basic $auth_string",
+    "Content-Length: 0"
+  ]);
   curl_setopt($ch, CURLOPT_POST, 1);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, '');
   curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
   curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
   curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
   curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+  curl_setopt($ch, CURLOPT_VERBOSE, true);
 
   $authResponse = curl_exec($ch);
   $curlError = curl_error($ch);
   $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-  curl_close($ch);
 
   if ($curlError) {
     error_log('[B2-AUTH] cURL error: ' . $curlError);
+  }
+
+  error_log('[B2-AUTH] Auth response: ' . $authResponse);
+  error_log('[B2-AUTH] HTTP Code: ' . $httpCode);
+
+  curl_close($ch);
+
+  if ($curlError) {
     throw new Exception('B2 auth failed: ' . $curlError);
   }
 
