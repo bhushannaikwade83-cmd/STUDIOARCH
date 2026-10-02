@@ -735,46 +735,17 @@ export default function Admin() {
       formData.append('existingImages', JSON.stringify(editingProjectImages));
       formData.append('existingVideos', JSON.stringify(editingProjectVideos));
 
-      // Split files: B2 for large (>100MB), Server for small
-      const b2Images: string[] = [];
-      const b2Videos: string[] = [];
-      const serverFiles: File[] = [];
-      const SIZE_100MB = 100 * 1024 * 1024;
-
+      // Add any pending files
       if (selectedEditFiles && selectedEditFiles.length > 0) {
-        console.log('📤 Processing', selectedEditFiles.length, 'files');
-        for (const file of selectedEditFiles) {
-          if (file.size > SIZE_100MB) {
-            console.log(`📦 Large file: ${file.name} (${formatFileSize(file.size)}) → B2`);
-            try {
-              const b2Result = await uploadToB2(file, (progress) => {
-                setUploadProgress(progress);
-              });
-              if (file.type.startsWith('image/')) {
-                b2Images.push(b2Result.url);
-              } else if (file.type.startsWith('video/')) {
-                b2Videos.push(b2Result.url);
-              }
-              console.log('✅ B2 upload complete:', b2Result.url);
-            } catch (error) {
-              throw new Error(`Failed to upload ${file.name} to B2: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            }
-          } else {
-            console.log(`📤 Small file: ${file.name} (${formatFileSize(file.size)}) → Server`);
-            serverFiles.push(file);
-          }
+        console.log('📤 Adding', selectedEditFiles.length, 'new files to upload');
+        for (let i = 0; i < selectedEditFiles.length; i++) {
+          // The [] suffix is required: without it PHP keeps only the last
+          // file instead of building an array in $_FILES
+          formData.append('files[]', selectedEditFiles[i]);
+          console.log('✅ Added file:', selectedEditFiles[i].name);
         }
       } else {
         console.log('⚠️ No new files to upload');
-      }
-
-      // Add B2 URLs to FormData
-      if (b2Images.length > 0) formData.append('b2Images', JSON.stringify(b2Images));
-      if (b2Videos.length > 0) formData.append('b2Videos', JSON.stringify(b2Videos));
-
-      // Add server files
-      for (const file of serverFiles) {
-        formData.append('files[]', file);
       }
 
       const token = getToken();
@@ -991,43 +962,13 @@ export default function Admin() {
       formData.append('existingImages', JSON.stringify(newProjectImages));
       formData.append('existingVideos', JSON.stringify(newProjectVideos));
 
-      // Split files: B2 for large (>100MB), Server for small
-      const b2Images: string[] = [];
-      const b2Videos: string[] = [];
-      const serverFiles: File[] = [];
-      const SIZE_100MB = 100 * 1024 * 1024;
-
+      // Add any pending files
       if (selectedProjectFiles) {
-        for (const file of selectedProjectFiles) {
-          if (file.size > SIZE_100MB) {
-            console.log(`📦 Large file detected: ${file.name} (${formatFileSize(file.size)}) → B2`);
-            try {
-              const b2Result = await uploadToB2(file, (progress) => {
-                setUploadProgress(progress);
-              });
-              if (file.type.startsWith('image/')) {
-                b2Images.push(b2Result.url);
-              } else if (file.type.startsWith('video/')) {
-                b2Videos.push(b2Result.url);
-              }
-              console.log('✅ B2 upload complete:', b2Result.url);
-            } catch (error) {
-              throw new Error(`Failed to upload ${file.name} to B2: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            }
-          } else {
-            console.log(`📤 Small file: ${file.name} (${formatFileSize(file.size)}) → Server`);
-            serverFiles.push(file);
-          }
+        for (let i = 0; i < selectedProjectFiles.length; i++) {
+          // The [] suffix is required: without it PHP keeps only the last
+          // file instead of building an array in $_FILES
+          formData.append('files[]', selectedProjectFiles[i]);
         }
-      }
-
-      // Add B2 URLs to FormData
-      if (b2Images.length > 0) formData.append('b2Images', JSON.stringify(b2Images));
-      if (b2Videos.length > 0) formData.append('b2Videos', JSON.stringify(b2Videos));
-
-      // Add server files
-      for (const file of serverFiles) {
-        formData.append('files[]', file);
       }
 
       const token = getToken();
