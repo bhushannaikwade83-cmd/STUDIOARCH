@@ -1,9 +1,10 @@
 // B2 Direct Upload - Frontend handles B2 auth directly, no PHP proxy
+// Uses Vite environment variables
 
-const B2_KEY_ID = '379cd0b52bbf';
-const B2_APP_KEY = '0040a614cfa7c97e3de2377263ad7e9b55c68b587d';
-const B2_BUCKET_ID = '0327892cfdc0dba592e0b1f';
-const B2_BUCKET_NAME = 'STUDIO-ARCH';
+const B2_KEY_ID = import.meta.env.VITE_B2_KEY_ID;
+const B2_APP_KEY = import.meta.env.VITE_B2_APP_KEY;
+const B2_BUCKET_ID = import.meta.env.VITE_B2_BUCKET_ID;
+const B2_BUCKET_NAME = import.meta.env.VITE_B2_BUCKET_NAME;
 
 export async function uploadToB2(file, onProgress) {
   try {
