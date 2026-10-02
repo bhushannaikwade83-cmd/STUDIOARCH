@@ -52,6 +52,7 @@ import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
 import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, getContactInfo, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo } from '../utils/api';
 import { uploadToB2 } from '../utils/b2Upload';
+import { uploadToB2Chunked } from '../utils/b2ChunkedUpload';
 
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB - videos are uploaded uncompressed
 const MAX_PROJECT_FILES = 20; // images + videos combined, per project
@@ -708,7 +709,8 @@ export default function Admin() {
           if (file.type.startsWith('video/') && file.size > SIZE_100MB) {
             console.log(`🎬 Large video: ${file.name} (${formatFileSize(file.size)}) → B2`);
             try {
-              const b2Result = await uploadToB2(file, (progress) => {
+              // Use chunked upload for large files to bypass cPanel limits
+              const b2Result = await uploadToB2Chunked(file, (progress) => {
                 setUploadProgress(progress);
               });
               b2Videos.push(b2Result.url);
@@ -959,7 +961,8 @@ export default function Admin() {
           if (file.type.startsWith('video/') && file.size > SIZE_100MB) {
             console.log(`🎬 Large video: ${file.name} (${formatFileSize(file.size)}) → B2`);
             try {
-              const b2Result = await uploadToB2(file, (progress) => {
+              // Use chunked upload for large files to bypass cPanel limits
+              const b2Result = await uploadToB2Chunked(file, (progress) => {
                 setUploadProgress(progress);
               });
               b2Videos.push(b2Result.url);
