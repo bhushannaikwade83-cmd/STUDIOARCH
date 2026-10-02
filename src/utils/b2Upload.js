@@ -1,90 +1,58 @@
-// B2 Storage Upload Utility - Direct B2 API calls
+// B2 Storage Upload Utility - Backend Proxy (like BJNP pattern)
 
-const B2_KEY_ID = import.meta.env.VITE_B2_KEY_ID;
-const B2_APP_KEY = import.meta.env.VITE_B2_APPLICATION_KEY;
-const B2_BUCKET_NAME = import.meta.env.VITE_B2_BUCKET_NAME;
-const B2_BUCKET_ID = import.meta.env.VITE_B2_BUCKET_ID;
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/studioarch/api`
+  : 'https://digitrixmedia.com/studioarch/api';
+
+import { getToken } from './auth.js';
 
 export async function uploadToB2(file, onProgress) {
   try {
     console.log('🚀 [B2] Starting B2 upload:', {
       fileName: file.name,
-      fileSize: file.size,
-      bucketName: B2_BUCKET_NAME
+      fileSize: file.size
     });
 
-    // Step 1: Authorize with B2
-    console.log('🔐 [B2] Authorizing...');
-    const authHeader = 'Basic ' + btoa(B2_KEY_ID + ':' + B2_APP_KEY);
-
-    const authResponse = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
-      method: 'POST',
-      headers: {
-        'Authorization': authHeader
-      }
-    });
-
-    if (!authResponse.ok) {
-      throw new Error(`B2 auth failed: ${authResponse.status}`);
-    }
-
-    const authData = await authResponse.json();
-    const authToken = authData.authorizationToken;
-    const apiUrl = authData.apiUrl;
-
-    console.log('✅ [B2] Authorized');
-
-    // Step 2: Get upload URL
-    console.log('📍 [B2] Getting upload URL...');
-    const uploadUrlResponse = await fetch(`${apiUrl}/b2api/v2/b2_get_upload_url`, {
-      method: 'POST',
-      headers: {
-        'Authorization': authToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ bucketId: B2_BUCKET_ID })
-    });
-
-    const uploadUrlData = await uploadUrlResponse.json();
-    const uploadUrl = uploadUrlData.uploadUrl;
-    const uploadToken = uploadUrlData.authorizationToken;
-
-    // Step 3: Calculate SHA1
+    const token = getToken();
     const fileBuffer = await file.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest('SHA-1', fileBuffer);
-    const sha1 = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
 
-    // Step 4: Upload file
-    console.log('📤 [B2] Uploading to B2...');
-    const uploadResponse = await fetch(uploadUrl, {
+    // Upload to backend proxy (server handles B2 auth)
+    console.log('📤 [B2] Uploading via backend proxy...');
+
+    const response = await fetch(`${API_BASE}/b2-proxy`, {
       method: 'POST',
       headers: {
-        'Authorization': uploadToken,
-        'X-Bz-File-Name': file.name,
-        'X-Bz-Content-Sha1': sha1,
-        'Content-Type': 'application/octet-stream'
+        'Authorization': token ? `Bearer ${token}` : '',
+        'X-File-Name': file.name,
+        'X-Folder': 'uploads/',
+        'X-Content-Type': file.type || 'application/octet-stream'
       },
-      body: file
+      body: fileBuffer
     });
 
-    if (!uploadResponse.ok) {
-      throw new Error(`B2 upload failed: ${uploadResponse.status}`);
+    console.log('📥 [B2] Response status:', response.status);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      console.error('❌ [B2] Upload failed:', error);
+      throw new Error(error.error || `Upload failed: ${response.status}`);
     }
 
-    const uploadResult = await uploadResponse.json();
-    const fileUrl = `https://f000.backblazeb2.com/file/${B2_BUCKET_NAME}/${uploadResult.fileName}`;
+    const result = await response.json();
 
-    console.log('✅ [B2] Upload complete:', fileUrl);
+    if (!result.success) {
+      throw new Error(result.error || 'B2 upload error');
+    }
+
+    console.log('✅ [B2] Upload complete:', result.publicUrl);
     onProgress?.(100);
 
     return {
       success: true,
-      fileId: uploadResult.fileId,
-      fileName: uploadResult.fileName,
-      url: fileUrl,
-      size: uploadResult.contentLength
+      fileId: result.fileId,
+      fileName: result.fileName,
+      url: result.publicUrl || result.b2Url,
+      size: result.contentLength
     };
 
   } catch (error) {
@@ -96,8 +64,6 @@ export async function uploadToB2(file, onProgress) {
 export async function deleteFromB2(fileId) {
   try {
     console.log('🗑️ [B2] Deleting file:', fileId);
-    // Note: Backblaze B2 file deletion requires both fileId and fileName
-    // This would need to be implemented in the proxy if needed
     throw new Error('B2 deletion not yet implemented');
   } catch (error) {
     console.error('❌ [B2] Delete error:', error.message);
