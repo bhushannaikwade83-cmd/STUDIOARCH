@@ -25,11 +25,11 @@ try {
 
   error_log('[B2-PROXY] Upload request: ' . $fileName . ' (' . $file['size'] . ' bytes)');
 
-  // Get B2 credentials from env or hardcoded
-  $b2_key_id = getenv('B2_KEY_ID') ?: '379cd0b52bbf';
-  $b2_app_key = getenv('B2_APPLICATION_KEY') ?: '004a72718b0ba180f5b742b7a1f4840d3c9ec904b4';
-  $b2_bucket_id = getenv('B2_BUCKET_ID') ?: '0327892cfdc0dba592e0b1f';
-  $b2_bucket_name = getenv('B2_BUCKET_NAME') ?: 'STUDIO-ARCH';
+  // Get B2 credentials from env
+  $b2_key_id = getenv('B2_KEY_ID') ?: $_POST['keyId'] ?? '';
+  $b2_app_key = getenv('B2_APPLICATION_KEY') ?: $_POST['appKey'] ?? '';
+  $b2_bucket_id = getenv('B2_BUCKET_ID') ?: $_POST['bucketId'] ?? '';
+  $b2_bucket_name = getenv('B2_BUCKET_NAME') ?: $_POST['bucketName'] ?? '';
 
   if (!$b2_key_id || !$b2_app_key || !$b2_bucket_id) {
     error_log('[B2-PROXY] ERROR: Missing B2 credentials');
