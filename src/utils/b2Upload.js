@@ -19,7 +19,7 @@ export async function uploadToB2(file, onProgress) {
 
     // Step 1: Get B2 authorization from PHP (auth only, no file)
     console.log('🔐 [B2] Getting authorization from PHP...');
-    const authResponse = await fetch(`${API_BASE}/uploads/create`, {
+    const authResponse = await fetch(`${API_BASE}/create`, {
       method: 'POST',
       headers: {
         'Authorization': token ? `Bearer ${token}` : '',
