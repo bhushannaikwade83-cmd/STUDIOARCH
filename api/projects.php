@@ -195,7 +195,9 @@ if ($method === 'GET') {
   $existingVideos = $_POST['existingVideos'] ?? null;
   $existingVideosArray = $existingVideos ? json_decode($existingVideos, true) : [];
 
-  // Get B2 URLs (if any) - frontend uploads large videos (>100MB) to B2 directly
+  // Get B2 URLs (if any) - frontend uploads large files to B2 directly
+  $b2Images = $_POST['b2Images'] ?? null;
+  $b2ImagesArray = $b2Images ? json_decode($b2Images, true) : [];
   $b2Videos = $_POST['b2Videos'] ?? null;
   $b2VideosArray = $b2Videos ? json_decode($b2Videos, true) : [];
 
@@ -203,9 +205,7 @@ if ($method === 'GET') {
   $uploadedUrls = processUploadedFiles('files');
 
   // Combine existing, B2, and newly uploaded files
-  // Images: existing + server uploads only (no B2)
-  // Videos: existing + B2 (large) + server uploads (small)
-  $images = array_merge($existingImagesArray, $uploadedUrls['images']);
+  $images = array_merge($existingImagesArray, $b2ImagesArray, $uploadedUrls['images']);
   $videos = array_merge($existingVideosArray, $b2VideosArray, $uploadedUrls['videos']);
 
   error_log('[B2] POST: images=' . count($images) . ' (existing: ' . count($existingImagesArray)
@@ -315,11 +315,13 @@ if ($method === 'GET') {
   }
 
   // Get B2 URLs (if any) - frontend uploads large files to B2 directly
+  $b2Images = $_POST['b2Images'] ?? null;
+  $b2ImagesArray = $b2Images ? json_decode($b2Images, true) : [];
   $b2Videos = $_POST['b2Videos'] ?? null;
   $b2VideosArray = $b2Videos ? json_decode($b2Videos, true) : [];
 
   error_log('[DEBUG] Existing images: ' . count($existingImagesArray) . ', videos: ' . count($existingVideosArray));
-  error_log('[B2] PUT: B2 videos: ' . count($b2VideosArray));
+  error_log('[B2] PUT: B2 images: ' . count($b2ImagesArray) . ', B2 videos: ' . count($b2VideosArray));
 
   // Process newly uploaded files (images and videos come back separately)
   $uploadedUrls = processUploadedFiles('files');
