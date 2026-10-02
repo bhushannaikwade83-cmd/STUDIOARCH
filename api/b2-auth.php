@@ -2,8 +2,8 @@
 // B2 Authorization - Fixed to use GET for v4 authorize_account
 require_once __DIR__ . '/config.php';
 
-// CORS Headers - CRITICAL
-header('Access-Control-Allow-Origin: *');
+// CORS Headers - specific to admin frontend only
+header('Access-Control-Allow-Origin: https://digitrixmedia.com');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json');
@@ -21,11 +21,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-  // B2 Credentials - TODO: REVOKE OLD KEYS AFTER EXPOSURE
-  $b2_key_id = '379cd0b52bbf';
-  $b2_app_key = '0040a614cfa7c97e3de2377263ad7e9b55c68b587d';
-  $b2_bucket_id = '0327892cfdc0dba592e0b1f';
-  $b2_bucket_name = 'STUDIO-ARCH';
+  // B2 Credentials from environment variables
+  $b2_key_id = getenv('B2_KEY_ID');
+  $b2_app_key = getenv('B2_APP_KEY');
+  $b2_bucket_id = getenv('B2_BUCKET_ID');
+  $b2_bucket_name = getenv('B2_BUCKET_NAME') ?: 'STUDIO-ARCH';
+
+  if (!$b2_key_id || !$b2_app_key || !$b2_bucket_id) {
+    throw new Exception('B2 credentials not configured in environment');
+  }
 
   error_log('[B2-AUTH] Authorizing with B2 v4...');
 
@@ -56,13 +60,19 @@ try {
   if ($curlError) {
     error_log('[B2-AUTH] CURL Error: ' . $curlError);
   }
-  error_log('[B2-AUTH] Response: ' . substr($authResponse ?: '', 0, 500));
 
   if ($curlError) {
     throw new Exception('B2 connection error: ' . $curlError);
   }
 
   $authData = json_decode($authResponse, true);
+
+  // Log full response with token redacted for debugging
+  $debugAuthData = $authData;
+  if (is_array($debugAuthData)) {
+    unset($debugAuthData['authorizationToken']);
+  }
+  error_log('[B2-AUTH] Response: ' . json_encode($debugAuthData, JSON_PRETTY_PRINT));
 
   if ($httpCode !== 200) {
     $message = $authData['message'] ?? $authData['error'] ?? 'Unknown B2 error';
