@@ -13,12 +13,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 try {
-  $input = json_decode(file_get_contents('php://input'), true);
+  $rawInput = file_get_contents('php://input');
+  error_log('[B2-INITIATE] Raw input: ' . $rawInput);
+
+  $input = json_decode($rawInput, true);
+  error_log('[B2-INITIATE] Decoded input: ' . json_encode($input));
 
   $b2AuthToken = $input['authToken'] ?? null;
   $b2ApiUrl = $input['apiUrl'] ?? null;
   $fileName = $input['fileName'] ?? null;
   $b2BucketId = $input['bucketId'] ?? null;
+
+  error_log('[B2-INITIATE] authToken: ' . ($b2AuthToken ? 'present' : 'MISSING'));
+  error_log('[B2-INITIATE] apiUrl: ' . ($b2ApiUrl ?? 'MISSING'));
+  error_log('[B2-INITIATE] fileName: ' . ($fileName ?? 'MISSING'));
+  error_log('[B2-INITIATE] bucketId: ' . ($b2BucketId ?? 'MISSING'));
 
   if (!$b2AuthToken || !$b2ApiUrl || !$fileName || !$b2BucketId) {
     throw new Exception('Missing required parameters: authToken, apiUrl, fileName, bucketId');
