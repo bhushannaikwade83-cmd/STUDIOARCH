@@ -1,6 +1,6 @@
 <?php
 // Create upload authorization - PHP only provides auth, NO FILE HANDLING
-require_once '../config.php';
+require_once 'config.php';
 
 try {
   if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -24,7 +24,7 @@ try {
     exit();
   }
 
-  error_log('[UPLOAD-CREATE] Auth for: ' . $fileName . ' (' . $fileSize . ' bytes)');
+  error_log('[CREATE] Auth for: ' . $fileName . ' (' . $fileSize . ' bytes)');
 
   // B2 Credentials
   $b2_key_id = '379cd0b52bbf';
@@ -32,20 +32,31 @@ try {
   $b2_bucket_id = '0327892cfdc0dba592e0b1f';
   $b2_bucket_name = 'STUDIO-ARCH';
 
-  // Authorize with B2
+  // Authorize with B2 using cURL
+  error_log('[CREATE] Authorizing with B2...');
   $auth = base64_encode($b2_key_id . ':' . $b2_app_key);
-  $authResponse = file_get_contents('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', false,
-    stream_context_create([
-      'http' => [
-        'method' => 'POST',
-        'header' => 'Authorization: Basic ' . $auth . "\r\n",
-        'timeout' => 30
-      ]
-    ])
-  );
 
-  if (!$authResponse) {
-    throw new Exception('B2 authorization failed');
+  $ch = curl_init('https://api.backblazeb2.com/b2api/v2/b2_authorize_account');
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Basic ' . $auth
+  ]);
+  curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+  $authResponse = curl_exec($ch);
+  $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  $curlError = curl_error($ch);
+  curl_close($ch);
+
+  if ($curlError) {
+    throw new Exception('B2 curl error: ' . $curlError);
+  }
+
+  if (!$authResponse || $httpCode !== 200) {
+    error_log('[CREATE] B2 auth failed. HTTP: ' . $httpCode . ' Response: ' . $authResponse);
+    throw new Exception('B2 authorization failed: ' . $httpCode);
   }
 
   $authData = json_decode($authResponse, true);
@@ -53,24 +64,32 @@ try {
     throw new Exception('B2 auth error: ' . $authData['error']);
   }
 
-  $b2AuthToken = $authData['authorizationToken'];
-  $b2ApiUrl = $authData['apiUrl'];
-  $downloadUrl = $authData['downloadUrl'];
+  $b2AuthToken = $authData['authorizationToken'] ?? null;
+  $b2ApiUrl = $authData['apiUrl'] ?? null;
+  $downloadUrl = $authData['downloadUrl'] ?? null;
 
-  // Get upload URL for multipart
-  $uploadUrlContext = stream_context_create([
-    'http' => [
-      'method' => 'POST',
-      'header' => [
-        'Authorization: ' . $b2AuthToken,
-        'Content-Type: application/json'
-      ],
-      'content' => json_encode(['bucketId' => $b2_bucket_id]),
-      'timeout' => 30
-    ]
+  if (!$b2AuthToken || !$b2ApiUrl) {
+    throw new Exception('B2 missing auth token or API URL');
+  }
+
+  error_log('[CREATE] B2 authorized');
+
+  // Get upload URL using cURL
+  $ch = curl_init($b2ApiUrl . '/b2api/v2/b2_get_upload_url');
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: ' . $b2AuthToken,
+    'Content-Type: application/json'
   ]);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['bucketId' => $b2_bucket_id]));
+  curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
-  $uploadUrlResponse = file_get_contents($b2ApiUrl . '/b2api/v2/b2_get_upload_url', false, $uploadUrlContext);
+  $uploadUrlResponse = curl_exec($ch);
+  $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+
   $uploadUrlData = json_decode($uploadUrlResponse, true);
 
   if (!$uploadUrlData['uploadUrl']) {
@@ -78,6 +97,8 @@ try {
   }
 
   $fileKey = 'uploads/' . date('Y-m-d') . '/' . time() . '-' . basename($fileName);
+
+  error_log('[CREATE] Success - returning auth to frontend');
 
   echo json_encode([
     'success' => true,
@@ -92,7 +113,7 @@ try {
   ]);
 
 } catch (Exception $e) {
-  error_log('[UPLOAD-CREATE] Exception: ' . $e->getMessage());
+  error_log('[CREATE] Exception: ' . $e->getMessage());
   http_response_code(500);
   echo json_encode(['error' => $e->getMessage()]);
 }
