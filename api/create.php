@@ -48,14 +48,12 @@ try {
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST => true,
     CURLOPT_HTTPHEADER => [
-      'Authorization: Basic ' . $auth_string,
-      'Content-Length: 0'
+      'Authorization: Basic ' . $auth_string
     ],
-    CURLOPT_POSTFIELDS => '',
     CURLOPT_TIMEOUT => 30,
     CURLOPT_CONNECTTIMEOUT => 10,
-    CURLOPT_SSL_VERIFYPEER => false,
-    CURLOPT_SSL_VERIFYHOST => 0,
+    CURLOPT_SSL_VERIFYPEER => true,
+    CURLOPT_SSL_VERIFYHOST => 2,
     CURLOPT_VERBOSE => false
   ]);
 
