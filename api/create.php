@@ -29,8 +29,8 @@ try {
   // B2 Credentials - Using BJNP's Master Key (to test)
   $b2_key_id = '26d8b01eb813';
   $b2_app_key = '005738025403fd5d1f20cb4cbeff63865d6b9cc7ea';
-  $b2_bucket_id = 'b2361d486b90c15e9bd80113';
-  $b2_bucket_name = 'Biyanisclasseswebsite';
+  $b2_bucket_id = '0327892cfdc0dba592e0b1f';
+  $b2_bucket_name = 'STUDIO-ARCH';
 
   // Authorize with B2 using cURL
   error_log('[CREATE] Authorizing with B2...');
