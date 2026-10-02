@@ -1,5 +1,5 @@
 <?php
-// B2 Authorization - PHP version with CORS headers
+// B2 Authorization - Fixed to use GET for v4 authorize_account
 require_once __DIR__ . '/config.php';
 
 // CORS Headers - CRITICAL
@@ -21,109 +21,120 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-  // B2 Credentials
+  // B2 Credentials - TODO: REVOKE OLD KEYS AFTER EXPOSURE
   $b2_key_id = '379cd0b52bbf';
   $b2_app_key = '0040a614cfa7c97e3de2377263ad7e9b55c68b587d';
   $b2_bucket_id = '0327892cfdc0dba592e0b1f';
   $b2_bucket_name = 'STUDIO-ARCH';
 
-  error_log('[B2-AUTH] Authorizing with B2...');
+  error_log('[B2-AUTH] Authorizing with B2 v4...');
 
-  // Check if cURL is available
   if (!function_exists('curl_init')) {
     throw new Exception('cURL is not enabled on this server');
   }
 
-  // Step 1: Authorize with B2 using cURL
-  $auth_string = base64_encode($b2_key_id . ':' . $b2_app_key);
+  // Step 1: GET b2_authorize_account (v4 API endpoint)
+  $ch = curl_init('https://api.backblazeb2.com/b2api/v4/b2_authorize_account');
 
-  $ch = curl_init();
-  curl_setopt($ch, CURLOPT_URL, 'https://api.backblazeb2.com/b2api/v2/b2_authorize_account');
-  curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    "Authorization: Basic $auth_string",
-    "Content-Length: 0"
+  curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPGET => true,
+    CURLOPT_USERPWD => $b2_key_id . ':' . $b2_app_key,
+    CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
+    CURLOPT_TIMEOUT => 30,
+    CURLOPT_CONNECTTIMEOUT => 10,
+    CURLOPT_SSL_VERIFYPEER => true,
+    CURLOPT_SSL_VERIFYHOST => 2,
   ]);
-  curl_setopt($ch, CURLOPT_POST, 1);
-  curl_setopt($ch, CURLOPT_POSTFIELDS, '');
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-  curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-  curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-  curl_setopt($ch, CURLOPT_VERBOSE, true);
 
   $authResponse = curl_exec($ch);
-  $curlError = curl_error($ch);
   $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-  if ($curlError) {
-    error_log('[B2-AUTH] cURL error: ' . $curlError);
-  }
-
-  error_log('[B2-AUTH] Auth response: ' . $authResponse);
-  error_log('[B2-AUTH] HTTP Code: ' . $httpCode);
-
+  $curlError = curl_error($ch);
   curl_close($ch);
 
+  error_log('[B2-AUTH] HTTP Code: ' . $httpCode);
   if ($curlError) {
-    throw new Exception('B2 auth failed: ' . $curlError);
+    error_log('[B2-AUTH] CURL Error: ' . $curlError);
   }
+  error_log('[B2-AUTH] Response: ' . substr($authResponse ?: '', 0, 500));
 
-  if ($httpCode !== 200) {
-    error_log('[B2-AUTH] HTTP ' . $httpCode . ': ' . $authResponse);
-    throw new Exception('B2 auth failed: HTTP ' . $httpCode);
+  if ($curlError) {
+    throw new Exception('B2 connection error: ' . $curlError);
   }
 
   $authData = json_decode($authResponse, true);
-  if (!$authData || isset($authData['error'])) {
-    error_log('[B2-AUTH] B2 API error: ' . json_encode($authData));
-    throw new Exception('B2 error: ' . ($authData['error'] ?? 'Invalid response'));
+
+  if ($httpCode !== 200) {
+    $message = $authData['message'] ?? $authData['error'] ?? 'Unknown B2 error';
+    error_log('[B2-AUTH] HTTP ' . $httpCode . ': ' . $message);
+    throw new Exception('B2 auth failed: HTTP ' . $httpCode . ' - ' . $message);
   }
 
-  $b2AuthToken = $authData['authorizationToken'];
-  $b2ApiUrl = $authData['apiUrl'];
-  $downloadUrl = $authData['downloadUrl'];
+  if (!is_array($authData)) {
+    throw new Exception('Invalid JSON returned by B2');
+  }
+
+  // Parse v4 response structure
+  $b2AuthToken = $authData['authorizationToken'] ?? null;
+  $storageApi = $authData['apiInfo']['storageApi'] ?? [];
+  $b2ApiUrl = $storageApi['apiUrl'] ?? null;
+  $downloadUrl = $storageApi['downloadUrl'] ?? null;
+
+  if (!$b2AuthToken || !$b2ApiUrl) {
+    throw new Exception('B2 missing authorizationToken or storage API URL');
+  }
 
   error_log('[B2-AUTH] ✅ Authorized');
 
   // Step 2: Get upload URL using cURL
-  $ch = curl_init();
-  curl_setopt($ch, CURLOPT_URL, $b2ApiUrl . '/b2api/v2/b2_get_upload_url');
-  curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    "Authorization: $b2AuthToken",
-    "Content-Type: application/json"
+  $ch = curl_init($b2ApiUrl . '/b2api/v2/b2_get_upload_url');
+
+  curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+
+    CURLOPT_HTTPHEADER => [
+      'Authorization: ' . $b2AuthToken,
+      'Content-Type: application/json'
+    ],
+
+    CURLOPT_POSTFIELDS => json_encode([
+      'bucketId' => $b2_bucket_id
+    ]),
+
+    CURLOPT_TIMEOUT => 30,
+    CURLOPT_CONNECTTIMEOUT => 10,
+
+    CURLOPT_SSL_VERIFYPEER => true,
+    CURLOPT_SSL_VERIFYHOST => 2,
   ]);
-  curl_setopt($ch, CURLOPT_POST, 1);
-  curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['bucketId' => $b2_bucket_id]));
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-  curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-  curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
   $uploadUrlResponse = curl_exec($ch);
-  $curlError = curl_error($ch);
   $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  $curlError = curl_error($ch);
   curl_close($ch);
 
   if ($curlError) {
-    error_log('[B2-AUTH] Upload URL cURL error: ' . $curlError);
-    throw new Exception('Failed to get upload URL: ' . $curlError);
-  }
-
-  if ($httpCode !== 200) {
-    error_log('[B2-AUTH] Upload URL HTTP ' . $httpCode . ': ' . $uploadUrlResponse);
-    throw new Exception('Failed to get upload URL: HTTP ' . $httpCode);
+    throw new Exception('B2 upload URL curl error: ' . $curlError);
   }
 
   $uploadUrlData = json_decode($uploadUrlResponse, true);
 
-  if (!isset($uploadUrlData['uploadUrl'])) {
-    error_log('[B2-AUTH] No upload URL in response: ' . json_encode($uploadUrlData));
-    throw new Exception('No upload URL from B2');
+  if ($httpCode !== 200) {
+    $message = $uploadUrlData['message'] ?? $uploadUrlData['error'] ?? 'Unknown B2 error';
+    throw new Exception('B2 upload URL failed: HTTP ' . $httpCode . ' - ' . $message);
+  }
+
+  if (
+    empty($uploadUrlData['uploadUrl']) ||
+    empty($uploadUrlData['authorizationToken'])
+  ) {
+    throw new Exception('B2 did not return uploadUrl/authorizationToken');
   }
 
   error_log('[B2-AUTH] ✅ Got upload URL');
 
-  // Return to frontend
+  // Return to frontend - only upload-specific auth token, not account auth token
   echo json_encode([
     'success' => true,
     'uploadUrl' => $uploadUrlData['uploadUrl'],
