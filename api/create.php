@@ -40,8 +40,10 @@ try {
   curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
   curl_setopt($ch, CURLOPT_POST, true);
   curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Authorization: Basic ' . $auth
+    'Authorization: Basic ' . $auth,
+    'Content-Length: 0'
   ]);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, '');
   curl_setopt($ch, CURLOPT_TIMEOUT, 30);
   curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
