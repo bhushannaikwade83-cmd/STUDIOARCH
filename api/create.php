@@ -1,6 +1,6 @@
 <?php
 // Create upload authorization - PHP only provides auth, NO FILE HANDLING
-require_once 'config.php';
+require_once __DIR__ . '/config.php';
 
 try {
   if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
