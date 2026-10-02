@@ -34,18 +34,15 @@ try {
 
   // Authorize with B2 using cURL
   error_log('[CREATE] Authorizing with B2...');
-  $auth = base64_encode($b2_key_id . ':' . $b2_app_key);
 
   $ch = curl_init('https://api.backblazeb2.com/b2api/v2/b2_authorize_account');
   curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
   curl_setopt($ch, CURLOPT_POST, true);
-  curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Authorization: Basic ' . $auth,
-    'Content-Length: 0'
-  ]);
-  curl_setopt($ch, CURLOPT_POSTFIELDS, '');
+  curl_setopt($ch, CURLOPT_USERPWD, $b2_key_id . ':' . $b2_app_key);
+  curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
   curl_setopt($ch, CURLOPT_TIMEOUT, 30);
   curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+  curl_setopt($ch, CURLOPT_ENCODING, '');
 
   $authResponse = curl_exec($ch);
   $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -53,11 +50,13 @@ try {
   curl_close($ch);
 
   if ($curlError) {
+    error_log('[CREATE] curl error: ' . $curlError);
     throw new Exception('B2 curl error: ' . $curlError);
   }
 
   if (!$authResponse || $httpCode !== 200) {
-    error_log('[CREATE] B2 auth failed. HTTP: ' . $httpCode . ' Response: ' . $authResponse);
+    error_log('[CREATE] B2 auth failed. HTTP: ' . $httpCode);
+    error_log('[CREATE] Response: ' . substr($authResponse, 0, 500));
     throw new Exception('B2 authorization failed: ' . $httpCode);
   }
 
