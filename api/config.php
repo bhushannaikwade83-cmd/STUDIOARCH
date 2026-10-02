@@ -29,7 +29,7 @@ $upload_dirs = [
 // Set CORS headers for all requests - works with or without .htaccess
 header('Access-Control-Allow-Origin: *', true);
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS', true);
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-File-Name, X-File-Type, X-Requested-With', true);
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-File-Name, X-File-Type, X-Folder, X-Content-Type, X-Requested-With', true);
 header('Access-Control-Max-Age: 86400', true);
 header('Content-Type: application/json', true);
 
