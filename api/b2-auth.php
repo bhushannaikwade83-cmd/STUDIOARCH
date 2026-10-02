@@ -97,6 +97,12 @@ try {
   error_log('[B2-AUTH] ✅ Authorized');
 
   // Step 2: Get upload URL using cURL
+  error_log('[B2-AUTH] Sending bucketId: ' . $b2_bucket_id);
+  error_log('[B2-AUTH] API URL: ' . $b2ApiUrl);
+
+  $postData = json_encode(['bucketId' => $b2_bucket_id]);
+  error_log('[B2-AUTH] POST data: ' . $postData);
+
   $ch = curl_init($b2ApiUrl . '/b2api/v2/b2_get_upload_url');
 
   curl_setopt_array($ch, [
@@ -108,9 +114,7 @@ try {
       'Content-Type: application/json'
     ],
 
-    CURLOPT_POSTFIELDS => json_encode([
-      'bucketId' => $b2_bucket_id
-    ]),
+    CURLOPT_POSTFIELDS => $postData,
 
     CURLOPT_TIMEOUT => 30,
     CURLOPT_CONNECTTIMEOUT => 10,
@@ -124,6 +128,9 @@ try {
   $curlError = curl_error($ch);
   curl_close($ch);
 
+  error_log('[B2-AUTH] Upload URL response code: ' . $httpCode);
+  error_log('[B2-AUTH] Upload URL response: ' . $uploadUrlResponse);
+
   if ($curlError) {
     throw new Exception('B2 upload URL curl error: ' . $curlError);
   }
@@ -132,6 +139,7 @@ try {
 
   if ($httpCode !== 200) {
     $message = $uploadUrlData['message'] ?? $uploadUrlData['error'] ?? 'Unknown B2 error';
+    error_log('[B2-AUTH] Full error response: ' . json_encode($uploadUrlData, JSON_PRETTY_PRINT));
     throw new Exception('B2 upload URL failed: HTTP ' . $httpCode . ' - ' . $message);
   }
 
