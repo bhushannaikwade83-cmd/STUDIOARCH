@@ -60,7 +60,7 @@ function createUploadRequest($conn, $fileName, $fileSize, $folder = 'uploads/', 
     throw new Exception('Prepare failed: ' . $conn->error);
   }
 
-  $stmt->bind_param('sslisss', $uploadId, $fileName, $fileSize, $chunksTotal, $folder, $projectId, $fieldName);
+  $stmt->bind_param('ssiisss', $uploadId, $fileName, $fileSize, $chunksTotal, $folder, $projectId, $fieldName);
 
   if (!$stmt->execute()) {
     throw new Exception('Execute failed: ' . $stmt->error);
