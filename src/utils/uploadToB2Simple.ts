@@ -1,8 +1,7 @@
-// Simple B2 Upload - Server-side proxy (no CORS issues!)
-// Browser → /api/upload → B2
-// Handles small and large files automatically
+// Simple B2 Upload - Vercel serverless (like BJNP)
+// Browser → Vercel Node.js → B2 (no CORS issues!)
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://digitrixmedia.com';
+const UPLOAD_URL = 'https://studioarch-main.vercel.app/api/upload';
 
 export async function uploadToB2Simple(
   file: File,
@@ -15,12 +14,7 @@ export async function uploadToB2Simple(
       fileSize: (file.size / 1024 / 1024 / 1024).toFixed(2) + ' GB'
     });
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('fileName', file.name);
-    formData.append('folder', folder);
-
-    // Track upload progress
+    // Track upload progress using XMLHttpRequest
     const xhr = new XMLHttpRequest();
 
     if (onProgress) {
@@ -33,7 +27,7 @@ export async function uploadToB2Simple(
       });
     }
 
-    // Upload to server endpoint
+    // Upload to Vercel endpoint
     const uploadPromise = new Promise<{ url: string; fileName: string }>((resolve, reject) => {
       xhr.addEventListener('load', () => {
         if (xhr.status === 200) {
@@ -46,8 +40,12 @@ export async function uploadToB2Simple(
             reject(new Error(result.error || 'Upload failed'));
           }
         } else {
-          const error = JSON.parse(xhr.responseText);
-          reject(new Error(error.error || 'Upload failed: HTTP ' + xhr.status));
+          try {
+            const error = JSON.parse(xhr.responseText);
+            reject(new Error(error.error || `Upload failed: HTTP ${xhr.status}`));
+          } catch {
+            reject(new Error(`Upload failed: HTTP ${xhr.status}`));
+          }
         }
       });
 
@@ -55,8 +53,11 @@ export async function uploadToB2Simple(
         reject(new Error('Network error during upload'));
       });
 
-      xhr.open('POST', `${API_BASE}/studioarch/api/upload`);
-      xhr.send(formData);
+      xhr.open('POST', UPLOAD_URL);
+      xhr.setRequestHeader('X-File-Name', file.name);
+      xhr.setRequestHeader('X-Folder', folder);
+
+      xhr.send(file);
     });
 
     return await uploadPromise;
