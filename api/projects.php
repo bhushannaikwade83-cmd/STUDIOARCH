@@ -196,10 +196,12 @@ if ($method === 'GET') {
   $existingVideosArray = $existingVideos ? json_decode($existingVideos, true) : [];
 
   // Get B2 URLs or Upload IDs (if any)
-  // b2Videos = final URLs (if background processor completed)
-  // b2UploadIds = queue IDs (if still processing in background)
   $b2Videos = $_POST['b2Videos'] ?? null;
   $b2UploadIds = $_POST['b2UploadIds'] ?? null;
+
+  error_log('[DEBUG] $_POST b2Videos: ' . ($b2Videos ? 'YES' : 'NO') . ' - value: ' . substr($b2Videos ?? '', 0, 100));
+  error_log('[DEBUG] $_POST b2UploadIds: ' . ($b2UploadIds ? 'YES' : 'NO'));
+
   $b2VideosArray = $b2Videos ? json_decode($b2Videos, true) : [];
   $b2UploadIdsArray = $b2UploadIds ? json_decode($b2UploadIds, true) : [];
 
@@ -331,9 +333,9 @@ if ($method === 'GET') {
 
   // Combine existing, B2, and newly uploaded (APPEND, don't replace)
   // Images: existing + server uploads only (no B2)
-  // Videos: existing + B2 URLs + B2 upload IDs + server uploads
+  // Videos: existing + B2 URLs + server uploads
   $allImages = array_merge($existingImagesArray, $uploadedUrls['images']);
-  $allVideos = array_merge($existingVideosArray, $b2VideosArray, $b2UploadIdsArray, $uploadedUrls['videos']);
+  $allVideos = array_merge($existingVideosArray, $b2VideosArray, $uploadedUrls['videos']);
 
   // JSON_UNESCAPED_SLASHES keeps URLs readable in the database
   $images_json = json_encode($allImages ?: [], JSON_UNESCAPED_SLASHES);
