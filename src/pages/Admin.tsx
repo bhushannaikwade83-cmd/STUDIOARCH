@@ -743,6 +743,8 @@ export default function Admin() {
       }
 
       // Add B2 upload IDs to FormData (backend will track these)
+      console.log('📋 FormData videos:', b2Videos.length, b2Videos);
+      console.log('📋 FormData images:', uploadedUrls['images'].length);
       if (b2UploadIds.length > 0) formData.append('b2UploadIds', JSON.stringify(b2UploadIds));
       if (b2Videos.length > 0) formData.append('b2Videos', JSON.stringify(b2Videos));
 
