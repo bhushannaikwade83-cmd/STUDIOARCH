@@ -1,4 +1,3 @@
-import { chunkedUpload } from '../utils/chunkedUpload';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -42,9 +41,32 @@ const postFormDataWithProgress = (
   });
 };
 
-// Backend upload function
-const uploadToBackend = (file: File, fileType: string, onProgress?: (progress: number) => void) =>
-  chunkedUpload(file, fileType, onProgress);
+// Backend upload function - uses queue system for all uploads
+const uploadToBackend = async (file: File, fileType: string, onProgress?: (progress: number) => void) => {
+  try {
+    const folder = fileType === 'gallery' ? 'gallery/' : fileType === 'videos' ? 'videos/' : 'projects/';
+    const { uploadId, showDone } = await uploadWithQueue(file, folder, undefined, fileType);
+
+    if (showDone) {
+      onProgress?.(100);
+      console.log(`✅ ${fileType} queued for background processing:`, uploadId);
+
+      // Poll in background without blocking
+      pollUploadStatus(uploadId)
+        .then(finalUrl => {
+          if (finalUrl) {
+            console.log(`✅ ${fileType} upload complete:`, finalUrl);
+          }
+        })
+        .catch(err => console.error(`❌ ${fileType} upload failed:`, err));
+    }
+
+    return { success: true, uploadId, url: uploadId };
+  } catch (error) {
+    console.error('Upload error:', error);
+    throw error;
+  }
+};
 
 import { useProjects, useJournalPosts, useContactMessages, useGallery, useEventVideos, useContentSettings } from '../hooks/useMariaDbData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
