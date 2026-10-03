@@ -51,8 +51,7 @@ import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
 import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, getContactInfo, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo } from '../utils/api';
-import { uploadToB2Simple } from '../utils/uploadToB2Simple';
-import { useUploadQueue } from '../hooks/useUploadQueue';
+import { uploadWithQueue, pollUploadStatus } from '../utils/uploadWithQueue';
 
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB - videos are uploaded uncompressed
 const MAX_PROJECT_FILES = 20; // images + videos combined, per project
@@ -699,6 +698,7 @@ export default function Admin() {
 
       // B2 for large videos only (images stay on server)
       const b2Videos: string[] = [];
+      const b2UploadIds: string[] = [];
       const serverFiles: File[] = [];
       const SIZE_100MB = 100 * 1024 * 1024;
 
@@ -707,16 +707,27 @@ export default function Admin() {
         for (const file of selectedEditFiles) {
           // Only videos > 100MB go to B2
           if (file.type.startsWith('video/') && file.size > SIZE_100MB) {
-            console.log(`🎬 Large video: ${file.name} (${formatFileSize(file.size)}) → B2`);
+            console.log(`🎬 Large video: ${file.name} (${formatFileSize(file.size)}) → B2 Queue`);
             try {
-              // Upload via server-side proxy (no CORS issues)
-              const b2Result = await uploadToB2Simple(file, 'videos/', (progress) => {
-                setUploadProgress(progress);
-              });
-              b2Videos.push(b2Result.url);
-              console.log('✅ B2 video upload complete:', b2Result.url);
+              // Submit to queue - returns immediately with uploadId
+              const { uploadId, showDone } = await uploadWithQueue(file, 'videos/', id, 'videos');
+
+              if (showDone) {
+                setUploadProgress(100);
+                console.log('✅ Video queued for background processing:', uploadId);
+                b2UploadIds.push(uploadId);
+
+                // Optional: Poll status in background (don't wait)
+                pollUploadStatus(uploadId)
+                  .then(finalUrl => {
+                    if (finalUrl) {
+                      console.log('✅ B2 upload complete:', finalUrl);
+                    }
+                  })
+                  .catch(err => console.error('❌ Upload failed:', err));
+              }
             } catch (error) {
-              throw new Error(`Failed to upload ${file.name} to B2: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              throw new Error(`Failed to queue ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
           } else {
             // All images and small videos go to server
@@ -728,7 +739,8 @@ export default function Admin() {
         console.log('⚠️ No new files to upload');
       }
 
-      // Add B2 URLs to FormData (videos only)
+      // Add B2 upload IDs to FormData (backend will track these)
+      if (b2UploadIds.length > 0) formData.append('b2UploadIds', JSON.stringify(b2UploadIds));
       if (b2Videos.length > 0) formData.append('b2Videos', JSON.stringify(b2Videos));
 
       // Add server files (images + small videos)
@@ -952,6 +964,7 @@ export default function Admin() {
 
       // B2 for large videos only (images stay on server)
       const b2Videos: string[] = [];
+      const b2UploadIds: string[] = [];
       const serverFiles: File[] = [];
       const SIZE_100MB = 100 * 1024 * 1024;
 
@@ -959,16 +972,27 @@ export default function Admin() {
         for (const file of selectedProjectFiles) {
           // Only videos > 100MB go to B2
           if (file.type.startsWith('video/') && file.size > SIZE_100MB) {
-            console.log(`🎬 Large video: ${file.name} (${formatFileSize(file.size)}) → B2`);
+            console.log(`🎬 Large video: ${file.name} (${formatFileSize(file.size)}) → B2 Queue`);
             try {
-              // Upload via server-side proxy (no CORS issues)
-              const b2Result = await uploadToB2Simple(file, 'videos/', (progress) => {
-                setUploadProgress(progress);
-              });
-              b2Videos.push(b2Result.url);
-              console.log('✅ B2 video upload complete:', b2Result.url);
+              // Submit to queue - returns immediately with uploadId
+              const { uploadId, showDone } = await uploadWithQueue(file, 'videos/', null, 'videos');
+
+              if (showDone) {
+                setUploadProgress(100);
+                console.log('✅ Video queued for background processing:', uploadId);
+                b2UploadIds.push(uploadId);
+
+                // Optional: Poll status in background (don't wait)
+                pollUploadStatus(uploadId)
+                  .then(finalUrl => {
+                    if (finalUrl) {
+                      console.log('✅ B2 upload complete:', finalUrl);
+                    }
+                  })
+                  .catch(err => console.error('❌ Upload failed:', err));
+              }
             } catch (error) {
-              throw new Error(`Failed to upload ${file.name} to B2: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              throw new Error(`Failed to queue ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
           } else {
             // All images and small videos go to server
@@ -978,8 +1002,8 @@ export default function Admin() {
         }
       }
 
-      // Add B2 URLs to FormData (videos only)
-      if (b2Videos.length > 0) formData.append('b2Videos', JSON.stringify(b2Videos));
+      // Add B2 upload IDs to FormData (videos only - will be processed in background)
+      if (b2UploadIds.length > 0) formData.append('b2UploadIds', JSON.stringify(b2UploadIds));
 
       // Add server files (images + small videos)
       for (const file of serverFiles) {
