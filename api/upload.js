@@ -159,12 +159,15 @@ async function finishLargeFile(auth, fileId, partShas) {
 }
 
 export default async function handler(req, res) {
+  // CORS headers - CRITICAL for browser requests
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-File-Name, X-Folder');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-File-Name, X-Folder, Authorization');
+  res.setHeader('Access-Control-Max-Age', '86400');
 
+  // Handle preflight
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    return res.status(200).json({ ok: true });
   }
 
   if (req.method !== 'POST') {
