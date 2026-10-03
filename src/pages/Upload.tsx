@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { uploadWithQueue, pollUploadStatus } from '../utils/uploadWithQueue';
 
 export default function Upload() {
   const [file, setFile] = useState(null);
@@ -16,24 +17,19 @@ export default function Upload() {
     setError(null);
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const response = await fetch('https://digitrixmedia.com/studioarch/api/upload', {
-        method: 'POST',
-        headers: {
-          'X-File-Name': file.name,
-          'X-File-Type': 'gallery',
-          'Content-Type': file.type,
-        },
-        body: arrayBuffer,
-      });
+      const { uploadId, showDone } = await uploadWithQueue(file, 'gallery/', undefined, 'gallery');
 
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
+      if (showDone) {
+        setResult({ success: true, uploadId, message: 'File queued for background processing' });
+        setFile(null);
+
+        // Poll status in background
+        pollUploadStatus(uploadId)
+          .then(url => {
+            if (url) setResult({ success: true, uploadId, url, message: 'Upload complete!' });
+          })
+          .catch(err => setError(err.message));
       }
-
-      const data = await response.json();
-      setResult(data);
-      setFile(null);
     } catch (err) {
       setError(err.message);
     } finally {
