@@ -5,7 +5,10 @@ require_once __DIR__ . '/config.php';
 header('Content-Type: application/json');
 
 try {
-  verifyToken();
+  // Skip auth for GET requests (public read)
+  if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    verifyToken();
+  }
 
   $action = $_GET['action'] ?? 'get';
 
@@ -16,7 +19,7 @@ try {
     $fileName = $_POST['fileName'] ?? null;
     $fileSize = $_POST['fileSize'] ?? null;
 
-    if (!$uploadId || !projectId || !$fileName) {
+    if (!$uploadId || !$projectId || !$fileName) {
       throw new Exception('Missing required fields');
     }
 
