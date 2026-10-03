@@ -1,4 +1,4 @@
-// Chunked video upload with progress tracking
+// Chunked video upload with progress tracking (localStorage based)
 const API_BASE = import.meta.env.VITE_API_URL || 'https://digitrixmedia.com';
 const CHUNK_SIZE = 25 * 1024 * 1024; // 25MB chunks (fast & reliable)
 
@@ -9,9 +9,10 @@ export interface UploadProgress {
   progress: number;
   status: 'uploading' | 'reassembling' | 'completed' | 'failed';
   error?: string;
+  createdAt: string;
 }
 
-async function reportProgress(
+function reportProgress(
   uploadId: string,
   projectId: number,
   progress: number,
@@ -19,21 +20,29 @@ async function reportProgress(
   error?: string
 ) {
   try {
-    const token = localStorage.getItem('studioarch_jwt_token');
-    const params = new URLSearchParams();
-    params.append('uploadId', uploadId);
-    params.append('progress', String(progress));
-    params.append('status', status);
-    params.append('error', error || '');
+    const uploads = JSON.parse(localStorage.getItem('upload_progress_tracking') || '[]');
+    const index = uploads.findIndex((u: UploadProgress) => u.uploadId === uploadId);
 
-    await fetch(`${API_BASE}/studioarch/api/upload-tracker.php?action=update`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token || ''}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params.toString(),
-    });
+    if (index >= 0) {
+      uploads[index] = {
+        ...uploads[index],
+        progress,
+        status,
+        error: error || undefined,
+      };
+    } else {
+      uploads.push({
+        uploadId,
+        projectId,
+        fileName: 'uploading...',
+        progress,
+        status,
+        error: error || undefined,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    localStorage.setItem('upload_progress_tracking', JSON.stringify(uploads));
   } catch (err) {
     console.error('Failed to report progress:', err);
   }
@@ -51,22 +60,17 @@ export async function uploadVideoChunkedWithTracking(
     console.log('📦 [CHUNKED] Starting chunked upload:', file.name);
     console.log(`📦 [CHUNKED] ${totalChunks} chunks of ${(CHUNK_SIZE / 1024 / 1024).toFixed(1)}MB`);
 
-    // Initialize tracking
-    const token = localStorage.getItem('studioarch_jwt_token');
-    const initParams = new URLSearchParams();
-    initParams.append('uploadId', uploadId);
-    initParams.append('projectId', String(projectId));
-    initParams.append('fileName', file.name);
-    initParams.append('fileSize', String(file.size));
-
-    await fetch(`${API_BASE}/studioarch/api/upload-tracker.php?action=init`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token || ''}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: initParams.toString(),
+    // Initialize tracking in localStorage
+    const uploads = JSON.parse(localStorage.getItem('upload_progress_tracking') || '[]');
+    uploads.push({
+      uploadId,
+      projectId,
+      fileName: file.name,
+      progress: 0,
+      status: 'uploading',
+      createdAt: new Date().toISOString(),
     });
+    localStorage.setItem('upload_progress_tracking', JSON.stringify(uploads));
 
     // Upload each chunk sequentially
     for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {

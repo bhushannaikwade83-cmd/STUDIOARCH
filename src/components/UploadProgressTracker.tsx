@@ -8,7 +8,7 @@ interface Upload {
   progress: number;
   status: 'uploading' | 'reassembling' | 'completed' | 'failed';
   error?: string;
-  createdAt: string;
+  createdAt?: string;
   videoUrl?: string;
 }
 
@@ -16,34 +16,23 @@ export function UploadProgressTracker() {
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Fetch uploads periodically
+  // Read uploads from localStorage periodically
   useEffect(() => {
-    const fetchUploads = async () => {
+    const loadUploads = () => {
       try {
-        const token = localStorage.getItem('studioarch_jwt_token');
-        const response = await fetch(
-          'https://digitrixmedia.com/studioarch/api/upload-tracker.php?action=get',
-          {
-            headers: {
-              'Authorization': `Bearer ${token || ''}`,
-            },
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.uploads) {
-            setUploads(data.uploads);
-          }
+        const stored = localStorage.getItem('upload_progress_tracking');
+        if (stored) {
+          const uploads = JSON.parse(stored);
+          setUploads(uploads);
         }
       } catch (err) {
-        console.error('Failed to fetch uploads:', err);
+        console.error('Failed to load uploads:', err);
       }
     };
 
-    // Fetch immediately and then every 2 seconds
-    fetchUploads();
-    const interval = setInterval(fetchUploads, 2000);
+    // Load immediately and then every 1 second
+    loadUploads();
+    const interval = setInterval(loadUploads, 1000);
 
     return () => clearInterval(interval);
   }, []);
