@@ -1,6 +1,6 @@
 // Simple chunked video upload - sequential for reliability
 const API_BASE = import.meta.env.VITE_API_URL || 'https://digitrixmedia.com';
-const CHUNK_SIZE = 50 * 1024 * 1024; // 50MB chunks (faster, fewer requests)
+const CHUNK_SIZE = 25 * 1024 * 1024; // 25MB chunks (fast & reliable)
 
 export async function uploadVideoChunked(
   file: File,
