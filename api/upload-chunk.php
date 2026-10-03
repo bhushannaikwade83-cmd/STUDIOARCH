@@ -75,11 +75,13 @@ try {
       return $a_index - $b_index;
     });
 
-    // Create upload directory
-    $upload_dir = __DIR__ . '/../uploads/videos';
+    // Create upload directory (absolute path)
+    $upload_dir = '/home/digitrix/public_html/studioarch/uploads/videos';
     if (!is_dir($upload_dir)) {
       mkdir($upload_dir, 0755, true);
     }
+
+    error_log("[FINALIZE] Upload dir: " . $upload_dir . " | Exists: " . (is_dir($upload_dir) ? 'YES' : 'NO'));
 
     // Generate filename
     $timestamp = time();
