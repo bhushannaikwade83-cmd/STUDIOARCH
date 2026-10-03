@@ -179,21 +179,24 @@ class B2Uploader {
 
 try {
     // Connect to database
-    $pdo = new PDO(
-        "mysql:host=$db_host;dbname=$db_name;charset=utf8mb4",
-        $db_user,
-        $db_pass,
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_THROW]
-    );
+    $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+
+    if ($conn->connect_error) {
+        throw new Exception('Database connection failed: ' . $conn->connect_error);
+    }
+
+    $conn->set_charset("utf8mb4");
 
     // Get pending uploads
-    $stmt = $pdo->query("SELECT * FROM uploads WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1");
-    $upload = $stmt->fetch(PDO::FETCH_ASSOC);
+    $result = $conn->query("SELECT * FROM uploads WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1");
 
-    if (!$upload) {
+    if (!$result || $result->num_rows === 0) {
         error_log('[PROCESSOR] No pending uploads');
+        $conn->close();
         exit(0);
     }
+
+    $upload = $result->fetch_assoc();
 
     $upload_id = $upload['upload_id'];
     $file_name = $upload['file_name'];
@@ -203,7 +206,10 @@ try {
     error_log("[PROCESSOR] Processing upload: $upload_id ($file_name)");
 
     // Update status to uploading
-    $pdo->prepare("UPDATE uploads SET status = 'uploading' WHERE upload_id = ?")->execute([$upload_id]);
+    $stmt = $conn->prepare("UPDATE uploads SET status = 'uploading' WHERE upload_id = ?");
+    $stmt->bind_param('s', $upload_id);
+    $stmt->execute();
+    $stmt->close();
 
     // Initialize B2 uploader
     $uploader = new B2Uploader($b2_key_id, $b2_app_key, $b2_bucket_id, $b2_bucket_name);
@@ -236,8 +242,10 @@ try {
 
         // Update progress
         $progress = round(($end / $file_size) * 100);
-        $pdo->prepare("UPDATE uploads SET progress = ?, chunks_uploaded = ? WHERE upload_id = ?")
-            ->execute([$progress, $part_number, $upload_id]);
+        $stmt = $conn->prepare("UPDATE uploads SET progress = ?, chunks_uploaded = ? WHERE upload_id = ?");
+        $stmt->bind_param('iis', $progress, $part_number, $upload_id);
+        $stmt->execute();
+        $stmt->close();
 
         error_log("[PROCESSOR] $upload_id: $progress% complete");
 
@@ -250,18 +258,28 @@ try {
     $public_url = $uploader->getPublicUrl($full_file_name);
 
     // Update database with final URL
-    $pdo->prepare("UPDATE uploads SET status = 'completed', progress = 100, b2_url = ?, b2_file_id = ?, completed_at = NOW() WHERE upload_id = ?")
-        ->execute([$public_url, $finish['fileId'], $upload_id]);
+    $stmt = $conn->prepare("UPDATE uploads SET status = 'completed', progress = 100, b2_url = ?, b2_file_id = ?, completed_at = NOW() WHERE upload_id = ?");
+    $stmt->bind_param('sss', $public_url, $finish['fileId'], $upload_id);
+    $stmt->execute();
+    $stmt->close();
 
     error_log("[PROCESSOR] $upload_id: Complete → $public_url");
+
+    $conn->close();
 
 } catch (Exception $e) {
     error_log("[PROCESSOR] Error: " . $e->getMessage());
 
     // Mark as failed
     try {
-        $pdo->prepare("UPDATE uploads SET status = 'failed', error_message = ? WHERE upload_id = ?")
-            ->execute([$e->getMessage(), $upload_id ?? null]);
+        if (isset($conn) && isset($upload_id)) {
+            $error_msg = $e->getMessage();
+            $stmt = $conn->prepare("UPDATE uploads SET status = 'failed', error_message = ? WHERE upload_id = ?");
+            $stmt->bind_param('ss', $error_msg, $upload_id);
+            $stmt->execute();
+            $stmt->close();
+            $conn->close();
+        }
     } catch (Exception $db_error) {
         error_log("[PROCESSOR] Failed to update error: " . $db_error->getMessage());
     }

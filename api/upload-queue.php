@@ -6,20 +6,17 @@ require_once __DIR__ . '/config.php';
 
 header('Content-Type: application/json');
 
-// Create PDO connection for this script
-try {
-  $pdo = new PDO(
-    "mysql:host=$db_host;dbname=$db_name;charset=utf8mb4",
-    $db_user,
-    $db_pass,
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_THROW]
-  );
-} catch (PDOException $e) {
+// Create mysqli connection for this script
+$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+
+if ($conn->connect_error) {
   http_response_code(500);
-  die(json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]));
+  die(json_encode(['error' => 'Database connection failed: ' . $conn->connect_error]));
 }
 
-function initializeUploadsTable($pdo) {
+$conn->set_charset("utf8mb4");
+
+function initializeUploadsTable($conn) {
   $sql = "
     CREATE TABLE IF NOT EXISTS uploads (
       id INT PRIMARY KEY AUTO_INCREMENT,
@@ -42,22 +39,34 @@ function initializeUploadsTable($pdo) {
     )
   ";
 
-  $pdo->exec($sql);
+  if (!$conn->query($sql)) {
+    throw new Exception('Failed to create table: ' . $conn->error);
+  }
 }
 
-function createUploadRequest($pdo, $fileName, $fileSize, $folder = 'uploads/', $projectId = null, $fieldName = null) {
-  initializeUploadsTable($pdo);
+function createUploadRequest($conn, $fileName, $fileSize, $folder = 'uploads/', $projectId = null, $fieldName = null) {
+  initializeUploadsTable($conn);
 
   $uploadId = uniqid('upload_', true);
-  $chunkSize = 6 * 1024 * 1024; // 6MB chunks for Vercel
+  $chunkSize = 6 * 1024 * 1024; // 6MB chunks
   $chunksTotal = ceil($fileSize / $chunkSize);
 
-  $stmt = $pdo->prepare("
+  $stmt = $conn->prepare("
     INSERT INTO uploads (upload_id, file_name, file_size, chunks_total, folder, project_id, field_name)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   ");
 
-  $stmt->execute([$uploadId, $fileName, $fileSize, $chunksTotal, $folder, $projectId, $fieldName]);
+  if (!$stmt) {
+    throw new Exception('Prepare failed: ' . $conn->error);
+  }
+
+  $stmt->bind_param('sslisss', $uploadId, $fileName, $fileSize, $chunksTotal, $folder, $projectId, $fieldName);
+
+  if (!$stmt->execute()) {
+    throw new Exception('Execute failed: ' . $stmt->error);
+  }
+
+  $stmt->close();
 
   error_log('[UPLOAD-QUEUE] Created request: ' . $uploadId . ' (' . round($fileSize/1024/1024, 1) . 'MB in ' . $chunksTotal . ' chunks)');
 
@@ -68,18 +77,30 @@ function createUploadRequest($pdo, $fileName, $fileSize, $folder = 'uploads/', $
   ];
 }
 
-function getUploadStatus($pdo, $uploadId) {
-  initializeUploadsTable($pdo);
+function getUploadStatus($conn, $uploadId) {
+  initializeUploadsTable($conn);
 
-  $stmt = $pdo->prepare("
+  $stmt = $conn->prepare("
     SELECT id, upload_id, file_name, file_size, status, progress, chunks_uploaded, chunks_total, b2_url, error_message, completed_at
     FROM uploads
     WHERE upload_id = ?
     LIMIT 1
   ");
 
-  $stmt->execute([$uploadId]);
-  $upload = $stmt->fetch(PDO::FETCH_ASSOC);
+  if (!$stmt) {
+    throw new Exception('Prepare failed: ' . $conn->error);
+  }
+
+  $stmt->bind_param('s', $uploadId);
+
+  if (!$stmt->execute()) {
+    throw new Exception('Execute failed: ' . $stmt->error);
+  }
+
+  $result = $stmt->get_result();
+  $upload = $result->fetch_assoc();
+
+  $stmt->close();
 
   if (!$upload) {
     throw new Exception('Upload not found');
@@ -90,45 +111,75 @@ function getUploadStatus($pdo, $uploadId) {
     'fileName' => $upload['file_name'],
     'fileSize' => $upload['file_size'],
     'status' => $upload['status'],
-    'progress' => $upload['progress'],
-    'chunksUploaded' => $upload['chunks_uploaded'],
-    'chunksTotal' => $upload['chunks_total'],
+    'progress' => (int)$upload['progress'],
+    'chunksUploaded' => (int)$upload['chunks_uploaded'],
+    'chunksTotal' => (int)$upload['chunks_total'],
     'url' => $upload['b2_url'],
     'error' => $upload['error_message'],
     'completedAt' => $upload['completed_at']
   ];
 }
 
-function updateUploadProgress($pdo, $uploadId, $chunksUploaded, $progress) {
-  $stmt = $pdo->prepare("
+function updateUploadProgress($conn, $uploadId, $chunksUploaded, $progress) {
+  $stmt = $conn->prepare("
     UPDATE uploads
     SET chunks_uploaded = ?, progress = ?
     WHERE upload_id = ?
   ");
 
-  $stmt->execute([$chunksUploaded, $progress, $uploadId]);
+  if (!$stmt) {
+    throw new Exception('Prepare failed: ' . $conn->error);
+  }
+
+  $stmt->bind_param('iis', $chunksUploaded, $progress, $uploadId);
+
+  if (!$stmt->execute()) {
+    throw new Exception('Execute failed: ' . $stmt->error);
+  }
+
+  $stmt->close();
 }
 
-function markUploadComplete($pdo, $uploadId, $b2Url) {
-  $stmt = $pdo->prepare("
+function markUploadComplete($conn, $uploadId, $b2Url) {
+  $stmt = $conn->prepare("
     UPDATE uploads
     SET status = 'completed', b2_url = ?, progress = 100, completed_at = NOW()
     WHERE upload_id = ?
   ");
 
-  $stmt->execute([$b2Url, $uploadId]);
+  if (!$stmt) {
+    throw new Exception('Prepare failed: ' . $conn->error);
+  }
+
+  $stmt->bind_param('ss', $b2Url, $uploadId);
+
+  if (!$stmt->execute()) {
+    throw new Exception('Execute failed: ' . $stmt->error);
+  }
+
+  $stmt->close();
 
   error_log('[UPLOAD-QUEUE] Completed: ' . $uploadId . ' → ' . $b2Url);
 }
 
-function markUploadFailed($pdo, $uploadId, $error) {
-  $stmt = $pdo->prepare("
+function markUploadFailed($conn, $uploadId, $error) {
+  $stmt = $conn->prepare("
     UPDATE uploads
     SET status = 'failed', error_message = ?
     WHERE upload_id = ?
   ");
 
-  $stmt->execute([$error, $uploadId]);
+  if (!$stmt) {
+    throw new Exception('Prepare failed: ' . $conn->error);
+  }
+
+  $stmt->bind_param('ss', $error, $uploadId);
+
+  if (!$stmt->execute()) {
+    throw new Exception('Execute failed: ' . $stmt->error);
+  }
+
+  $stmt->close();
 
   error_log('[UPLOAD-QUEUE] Failed: ' . $uploadId . ' - ' . $error);
 }
@@ -141,9 +192,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'create') {
       $result = createUploadRequest(
-        $pdo,
-        $input['fileName'],
-        $input['fileSize'],
+        $conn,
+        $input['fileName'] ?? '',
+        $input['fileSize'] ?? 0,
         $input['folder'] ?? 'uploads/',
         $input['projectId'] ?? null,
         $input['fieldName'] ?? null
@@ -164,11 +215,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       throw new Exception('Missing uploadId');
     }
 
-    $status = getUploadStatus($pdo, $uploadId);
+    $status = getUploadStatus($conn, $uploadId);
     echo json_encode(['success' => true, 'data' => $status]);
   } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);
   }
 }
+
+$conn->close();
 ?>
