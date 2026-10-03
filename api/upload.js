@@ -10,7 +10,7 @@ const B2_BUCKET_NAME = process.env.B2_BUCKET_NAME || 'STUDIO-ARCH2';
 
 export const config = {
   runtime: 'nodejs',
-  maxDuration: 900,
+  maxDuration: 300, // Free plan limit
 };
 
 async function readBody(req) {
