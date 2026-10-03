@@ -44,9 +44,9 @@ const postFormDataWithProgress = (
 // Backend upload function - direct server upload for videos
 const uploadToBackend = async (file: File, fileType: string, onProgress?: (progress: number) => void) => {
   try {
-    // Videos: upload directly to server (fast, no queue)
+    // Videos: upload in chunks (handles large files)
     if (fileType === 'videos') {
-      const url = await uploadVideoSimple(file, onProgress);
+      const url = await uploadVideoChunked(file, onProgress);
       return { success: true, url };
     }
 
@@ -65,7 +65,7 @@ import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
 import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, getContactInfo, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo } from '../utils/api';
-import { uploadVideoSimple } from '../utils/uploadVideoSimple';
+import { uploadVideoChunked } from '../utils/uploadVideoChunked';
 
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB - videos are uploaded uncompressed
 const MAX_PROJECT_FILES = 20; // images + videos combined, per project
@@ -723,7 +723,7 @@ export default function Admin() {
           if (file.type.startsWith('video/')) {
             console.log(`🎬 Video: ${file.name} (${formatFileSize(file.size)}) → Server`);
             try {
-              const videoUrl = await uploadVideoSimple(file, (percent) => {
+              const videoUrl = await uploadVideoChunked(file, (percent) => {
                 setUploadProgress(percent);
                 console.log(`⬆️ Video upload ${percent}%`);
               });
@@ -977,7 +977,7 @@ export default function Admin() {
           if (file.type.startsWith('video/')) {
             console.log(`🎬 Video: ${file.name} (${formatFileSize(file.size)}) → Server`);
             try {
-              const videoUrl = await uploadVideoSimple(file, (percent) => {
+              const videoUrl = await uploadVideoChunked(file, (percent) => {
                 setUploadProgress(percent);
                 console.log(`⬆️ Video upload ${percent}%`);
               });
