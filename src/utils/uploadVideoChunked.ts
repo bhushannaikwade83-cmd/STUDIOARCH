@@ -1,7 +1,6 @@
-// Simple chunked video upload - parallel chunks for speed
+// Simple chunked video upload - sequential for reliability
 const API_BASE = import.meta.env.VITE_API_URL || 'https://digitrixmedia.com';
-const CHUNK_SIZE = 25 * 1024 * 1024; // 25MB chunks (faster, fewer requests)
-const PARALLEL_CHUNKS = 3; // Upload 3 chunks simultaneously
+const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB chunks (fast, reliable)
 
 export async function uploadVideoChunked(
   file: File,
@@ -13,76 +12,43 @@ export async function uploadVideoChunked(
     const uploadId = 'upload_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
-    console.log(`📦 [CHUNKED] ${totalChunks} chunks of ${(CHUNK_SIZE/1024/1024).toFixed(1)}MB, uploading ${PARALLEL_CHUNKS} in parallel`);
+    console.log(`📦 [CHUNKED] ${totalChunks} chunks of ${(CHUNK_SIZE/1024/1024).toFixed(1)}MB`);
 
-    // Track completed chunks
-    const completedChunks = new Set<number>();
-    let uploadErrors: Error[] = [];
+    // Upload each chunk sequentially (reliable, no race conditions)
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+      const start = chunkIndex * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
 
-    // Upload chunks in parallel (3 at a time)
-    for (let startIdx = 0; startIdx < totalChunks; startIdx += PARALLEL_CHUNKS) {
-      const chunkPromises: Promise<void>[] = [];
+      const formData = new FormData();
+      formData.append('chunk', chunk);
+      formData.append('uploadId', uploadId);
+      formData.append('chunkIndex', String(chunkIndex));
+      formData.append('totalChunks', String(totalChunks));
+      formData.append('fileName', file.name);
 
-      // Start up to PARALLEL_CHUNKS uploads
-      for (let i = 0; i < PARALLEL_CHUNKS && startIdx + i < totalChunks; i++) {
-        const chunkIndex = startIdx + i;
+      const response = await fetch(`${API_BASE}/studioarch/api/upload-chunk.php`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('studioarch_jwt_token') || ''}`,
+        },
+        body: formData,
+      });
 
-        const uploadPromise = (async () => {
-          try {
-            const start = chunkIndex * CHUNK_SIZE;
-            const end = Math.min(start + CHUNK_SIZE, file.size);
-            const chunk = file.slice(start, end);
-
-            const formData = new FormData();
-            formData.append('chunk', chunk);
-            formData.append('uploadId', uploadId);
-            formData.append('chunkIndex', String(chunkIndex));
-            formData.append('totalChunks', String(totalChunks));
-            formData.append('fileName', file.name);
-
-            const response = await fetch(`${API_BASE}/studioarch/api/upload-chunk.php`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${localStorage.getItem('studioarch_jwt_token') || ''}`,
-              },
-              body: formData,
-            });
-
-            if (!response.ok) {
-              throw new Error(`Chunk ${chunkIndex + 1} failed: ${response.status}`);
-            }
-
-            const result = await response.json();
-            if (!result.success) {
-              throw new Error(result.error || `Chunk ${chunkIndex + 1} failed`);
-            }
-
-            completedChunks.add(chunkIndex);
-            const percent = Math.round((completedChunks.size / totalChunks) * 100);
-            onProgress?.(percent);
-            console.log(`📦 [CHUNKED] Chunk ${chunkIndex + 1}/${totalChunks} completed (${percent}%)`);
-          } catch (error) {
-            uploadErrors.push(error as Error);
-            throw error;
-          }
-        })();
-
-        chunkPromises.push(uploadPromise);
+      if (!response.ok) {
+        throw new Error(`Chunk ${chunkIndex + 1} failed: ${response.status}`);
       }
 
-      // Wait for all parallel uploads to complete
-      const results = await Promise.allSettled(chunkPromises);
-
-      // Check for errors
-      for (const result of results) {
-        if (result.status === 'rejected') {
-          throw result.reason;
-        }
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || `Chunk ${chunkIndex + 1} failed`);
       }
-    }
 
-    if (uploadErrors.length > 0) {
-      throw uploadErrors[0];
+      // Update progress
+      const uploadedChunks = chunkIndex + 1;
+      const percent = Math.round((uploadedChunks / totalChunks) * 100);
+      onProgress?.(percent);
+      console.log(`📦 [CHUNKED] Chunk ${uploadedChunks}/${totalChunks} (${percent}%)`);
     }
 
     // Get final URL from server
