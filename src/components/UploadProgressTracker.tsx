@@ -144,7 +144,9 @@ export function UploadProgressTracker() {
 
                     {/* Error */}
                     {upload.error && (
-                      <p className="text-xs text-red-600 mt-1">{upload.error}</p>
+                      <div className="text-xs text-red-500 mt-2 p-2 bg-red-900/30 rounded border border-red-700">
+                        ❌ {upload.error}
+                      </div>
                     )}
                   </div>
                 ))}

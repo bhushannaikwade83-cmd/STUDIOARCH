@@ -86,25 +86,38 @@ export async function uploadVideoChunkedWithTracking(
       formData.append('totalChunks', String(totalChunks));
       formData.append('fileName', file.name);
 
-      const response = await fetch(`${API_BASE}/studioarch/api/upload-chunk.php`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token || ''}`,
-        },
-        body: formData,
-      });
+      try {
+        // Fetch with 5 minute timeout per chunk
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000);
 
-      if (!response.ok) {
-        const errorMsg = `Chunk ${chunkIndex + 1} failed: ${response.status}`;
-        await reportProgress(uploadId, projectId, Math.round((chunkIndex / totalChunks) * 100), 'failed', errorMsg);
-        throw new Error(errorMsg);
-      }
+        const response = await fetch(`${API_BASE}/studioarch/api/upload-chunk.php`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token || ''}`,
+          },
+          body: formData,
+          signal: controller.signal,
+        });
 
-      const result = await response.json();
-      if (!result.success) {
-        const errorMsg = result.error || `Chunk ${chunkIndex + 1} failed`;
-        await reportProgress(uploadId, projectId, Math.round((chunkIndex / totalChunks) * 100), 'failed', errorMsg);
-        throw new Error(errorMsg);
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorMsg = `Chunk ${chunkIndex + 1} failed: HTTP ${response.status}`;
+          reportProgress(uploadId, projectId, Math.round((chunkIndex / totalChunks) * 100), 'failed', errorMsg);
+          throw new Error(errorMsg);
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+          const errorMsg = result.error || `Chunk ${chunkIndex + 1} failed`;
+          reportProgress(uploadId, projectId, Math.round((chunkIndex / totalChunks) * 100), 'failed', errorMsg);
+          throw new Error(errorMsg);
+        }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+        reportProgress(uploadId, projectId, Math.round((chunkIndex / totalChunks) * 100), 'failed', errorMsg);
+        throw err;
       }
 
       // Update progress
