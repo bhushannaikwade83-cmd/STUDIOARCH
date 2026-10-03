@@ -5,12 +5,12 @@ require_once __DIR__ . '/config.php';
 header('Content-Type: application/json');
 
 try {
+  $action = $_GET['action'] ?? 'get';
+
   // Skip auth for GET requests (public read)
-  if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+  if ($_SERVER['REQUEST_METHOD'] !== 'GET' || $action !== 'get') {
     verifyToken();
   }
-
-  $action = $_GET['action'] ?? 'get';
 
   if ($action === 'init') {
     // Initialize new upload tracking
