@@ -9,7 +9,8 @@ const B2_BUCKET_ID = process.env.B2_BUCKET_ID;
 const B2_BUCKET_NAME = process.env.B2_BUCKET_NAME || 'STUDIO-ARCH2';
 
 export const config = {
-  api: { bodyParser: false },
+  runtime: 'nodejs',
+  maxDuration: 900,
 };
 
 async function readBody(req) {
