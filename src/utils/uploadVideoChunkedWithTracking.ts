@@ -54,6 +54,7 @@ export async function uploadVideoChunkedWithTracking(
   onProgress?: (progress: UploadProgress) => void
 ): Promise<string> {
   try {
+    const token = localStorage.getItem('studioarch_jwt_token');
     const uploadId = 'upload_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
