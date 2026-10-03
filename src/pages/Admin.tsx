@@ -64,8 +64,9 @@ import { useProjects, useJournalPosts, useContactMessages, useGallery, useEventV
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
+import { UploadProgressTracker } from '../components/UploadProgressTracker';
 import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, getContactInfo, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo } from '../utils/api';
-import { uploadVideoChunked } from '../utils/uploadVideoChunked';
+import { uploadVideoChunkedWithTracking } from '../utils/uploadVideoChunkedWithTracking';
 
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB - videos are uploaded uncompressed
 const MAX_PROJECT_FILES = 20; // images + videos combined, per project
@@ -723,9 +724,9 @@ export default function Admin() {
           if (file.type.startsWith('video/')) {
             console.log(`🎬 Video: ${file.name} (${formatFileSize(file.size)}) → Server`);
             try {
-              const videoUrl = await uploadVideoChunked(file, (percent) => {
-                setUploadProgress(percent);
-                console.log(`⬆️ Video upload ${percent}%`);
+              const videoUrl = await uploadVideoChunkedWithTracking(file, id, (progress) => {
+                setUploadProgress(progress.progress);
+                console.log(`⬆️ Video upload ${progress.progress}%`);
               });
               b2Videos.push(videoUrl);
               console.log('✅ Video uploaded:', videoUrl);
@@ -978,9 +979,10 @@ export default function Admin() {
           if (file.type.startsWith('video/')) {
             console.log(`🎬 Video: ${file.name} (${formatFileSize(file.size)}) → Server`);
             try {
-              const videoUrl = await uploadVideoChunked(file, (percent) => {
-                setUploadProgress(percent);
-                console.log(`⬆️ Video upload ${percent}%`);
+              // Use 0 as projectId for new projects (will be updated after creation)
+              const videoUrl = await uploadVideoChunkedWithTracking(file, 0, (progress) => {
+                setUploadProgress(progress.progress);
+                console.log(`⬆️ Video upload ${progress.progress}%`);
               });
               b2Videos.push(videoUrl);
               console.log('✅ Video uploaded:', videoUrl);
@@ -1503,6 +1505,8 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-black text-white">
+      <UploadProgressTracker />
+
       {showSuccess && (
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-green-500/20 border border-green-500/40 text-green-300 px-6 py-3 rounded-lg backdrop-blur-md flex items-center gap-2">
           <div className="w-2 h-2 bg-green-400 rounded-full" />
