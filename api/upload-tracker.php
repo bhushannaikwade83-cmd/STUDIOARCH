@@ -7,8 +7,8 @@ header('Content-Type: application/json');
 try {
   $action = $_GET['action'] ?? 'get';
 
-  // Skip auth for GET requests (public read)
-  if ($_SERVER['REQUEST_METHOD'] !== 'GET' || $action !== 'get') {
+  // Only verify token for write operations (init, update, complete)
+  if ($action !== 'get') {
     verifyToken();
   }
 
