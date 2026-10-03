@@ -52,6 +52,7 @@ import { AdminImageDisplay } from '../components/AdminImageDisplay';
 import { AdminDashboardSection } from '../components/AdminDashboard';
 import { createJournalPost, updateJournalPost, deleteJournalPost, deleteContactMessage, deleteEventVideo, createProject, updateProject, deleteProject, updateContactInfo, updateContentSettings, getContactInfo, createGalleryFolder, deleteGalleryFolder, createGalleryItem, deleteGalleryItem, createEventVideo, updateEventVideo } from '../utils/api';
 import { uploadToB2Simple } from '../utils/uploadToB2Simple';
+import { useUploadQueue } from '../hooks/useUploadQueue';
 
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB - videos are uploaded uncompressed
 const MAX_PROJECT_FILES = 20; // images + videos combined, per project
