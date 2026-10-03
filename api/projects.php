@@ -195,9 +195,13 @@ if ($method === 'GET') {
   $existingVideos = $_POST['existingVideos'] ?? null;
   $existingVideosArray = $existingVideos ? json_decode($existingVideos, true) : [];
 
-  // Get B2 URLs (if any) - frontend uploads large videos (>100MB) to B2 directly
+  // Get B2 URLs or Upload IDs (if any)
+  // b2Videos = final URLs (if background processor completed)
+  // b2UploadIds = queue IDs (if still processing in background)
   $b2Videos = $_POST['b2Videos'] ?? null;
+  $b2UploadIds = $_POST['b2UploadIds'] ?? null;
   $b2VideosArray = $b2Videos ? json_decode($b2Videos, true) : [];
+  $b2UploadIdsArray = $b2UploadIds ? json_decode($b2UploadIds, true) : [];
 
   // Process newly uploaded files (returns images and videos separately)
   $uploadedUrls = processUploadedFiles('files');
@@ -209,9 +213,9 @@ if ($method === 'GET') {
   $videos = array_merge($existingVideosArray, $b2VideosArray, $uploadedUrls['videos']);
 
   error_log('[B2] POST: images=' . count($images) . ' (existing: ' . count($existingImagesArray)
-    . ', B2: ' . count($b2ImagesArray) . ', uploaded: ' . count($uploadedUrls['images']) . ')');
+    . ', uploaded: ' . count($uploadedUrls['images']) . ')');
   error_log('[B2] POST: videos=' . count($videos) . ' (existing: ' . count($existingVideosArray)
-    . ', B2: ' . count($b2VideosArray) . ', uploaded: ' . count($uploadedUrls['videos']) . ')');
+    . ', B2 URLs: ' . count($b2VideosArray) . ', B2 uploads: ' . count($b2UploadIdsArray) . ', uploaded: ' . count($uploadedUrls['videos']) . ')');
 
   if (!$title) {
     http_response_code(400);
@@ -319,15 +323,17 @@ if ($method === 'GET') {
   $b2VideosArray = $b2Videos ? json_decode($b2Videos, true) : [];
 
   error_log('[DEBUG] Existing images: ' . count($existingImagesArray) . ', videos: ' . count($existingVideosArray));
-  error_log('[B2] PUT: B2 videos: ' . count($b2VideosArray));
+  error_log('[B2] PUT: B2 videos: ' . count($b2VideosArray) . ', B2 uploads: ' . count($b2UploadIdsArray));
 
   // Process newly uploaded files (images and videos come back separately)
   $uploadedUrls = processUploadedFiles('files');
   error_log('[DEBUG] Newly uploaded - images: ' . count($uploadedUrls['images']) . ', videos: ' . count($uploadedUrls['videos']));
 
   // Combine existing, B2, and newly uploaded (APPEND, don't replace)
-  $allImages = array_merge($existingImagesArray, $b2ImagesArray, $uploadedUrls['images']);
-  $allVideos = array_merge($existingVideosArray, $b2VideosArray, $uploadedUrls['videos']);
+  // Images: existing + server uploads only (no B2)
+  // Videos: existing + B2 URLs + B2 upload IDs + server uploads
+  $allImages = array_merge($existingImagesArray, $uploadedUrls['images']);
+  $allVideos = array_merge($existingVideosArray, $b2VideosArray, $b2UploadIdsArray, $uploadedUrls['videos']);
 
   // JSON_UNESCAPED_SLASHES keeps URLs readable in the database
   $images_json = json_encode($allImages ?: [], JSON_UNESCAPED_SLASHES);
