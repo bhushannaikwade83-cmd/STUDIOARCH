@@ -719,33 +719,22 @@ export default function Admin() {
       if (selectedEditFiles && selectedEditFiles.length > 0) {
         console.log('📤 Processing', selectedEditFiles.length, 'files');
         for (const file of selectedEditFiles) {
-          // Only videos > 100MB go to B2
-          if (file.type.startsWith('video/') && file.size > SIZE_100MB) {
-            console.log(`🎬 Large video: ${file.name} (${formatFileSize(file.size)}) → B2 Queue`);
+          // Videos: upload directly to server
+          if (file.type.startsWith('video/')) {
+            console.log(`🎬 Video: ${file.name} (${formatFileSize(file.size)}) → Server`);
             try {
-              // Submit to queue - returns immediately with uploadId
-              const { uploadId, showDone } = await uploadWithQueue(file, 'videos/', id, 'videos');
-
-              if (showDone) {
-                setUploadProgress(100);
-                console.log('✅ Video queued for background processing:', uploadId);
-                b2UploadIds.push(uploadId);
-
-                // Optional: Poll status in background (don't wait)
-                pollUploadStatus(uploadId)
-                  .then(finalUrl => {
-                    if (finalUrl) {
-                      console.log('✅ B2 upload complete:', finalUrl);
-                    }
-                  })
-                  .catch(err => console.error('❌ Upload failed:', err));
-              }
+              const videoUrl = await uploadVideoSimple(file, (percent) => {
+                setUploadProgress(percent);
+                console.log(`⬆️ Video upload ${percent}%`);
+              });
+              b2Videos.push(videoUrl);
+              console.log('✅ Video uploaded:', videoUrl);
             } catch (error) {
-              throw new Error(`Failed to queue ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              throw new Error(`Failed to upload ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
           } else {
-            // All images and small videos go to server
-            console.log(`📤 ${file.type.startsWith('image/') ? 'Image' : 'Video'}: ${file.name} (${formatFileSize(file.size)}) → Server`);
+            // Images go to server
+            console.log(`🖼️ Image: ${file.name} (${formatFileSize(file.size)}) → Server`);
             serverFiles.push(file);
           }
         }
@@ -984,40 +973,29 @@ export default function Admin() {
 
       if (selectedProjectFiles) {
         for (const file of selectedProjectFiles) {
-          // Only videos > 100MB go to B2
-          if (file.type.startsWith('video/') && file.size > SIZE_100MB) {
-            console.log(`🎬 Large video: ${file.name} (${formatFileSize(file.size)}) → B2 Queue`);
+          // Videos: upload directly to server
+          if (file.type.startsWith('video/')) {
+            console.log(`🎬 Video: ${file.name} (${formatFileSize(file.size)}) → Server`);
             try {
-              // Submit to queue - returns immediately with uploadId
-              const { uploadId, showDone } = await uploadWithQueue(file, 'videos/', null, 'videos');
-
-              if (showDone) {
-                setUploadProgress(100);
-                console.log('✅ Video queued for background processing:', uploadId);
-                b2UploadIds.push(uploadId);
-
-                // Optional: Poll status in background (don't wait)
-                pollUploadStatus(uploadId)
-                  .then(finalUrl => {
-                    if (finalUrl) {
-                      console.log('✅ B2 upload complete:', finalUrl);
-                    }
-                  })
-                  .catch(err => console.error('❌ Upload failed:', err));
-              }
+              const videoUrl = await uploadVideoSimple(file, (percent) => {
+                setUploadProgress(percent);
+                console.log(`⬆️ Video upload ${percent}%`);
+              });
+              b2Videos.push(videoUrl);
+              console.log('✅ Video uploaded:', videoUrl);
             } catch (error) {
-              throw new Error(`Failed to queue ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              throw new Error(`Failed to upload ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
           } else {
-            // All images and small videos go to server
-            console.log(`📤 ${file.type.startsWith('image/') ? 'Image' : 'Video'}: ${file.name} (${formatFileSize(file.size)}) → Server`);
+            // Images go to server
+            console.log(`🖼️ Image: ${file.name} (${formatFileSize(file.size)}) → Server`);
             serverFiles.push(file);
           }
         }
       }
 
-      // Add B2 upload IDs to FormData (videos only - will be processed in background)
-      if (b2UploadIds.length > 0) formData.append('b2UploadIds', JSON.stringify(b2UploadIds));
+      // Add B2 video URLs to FormData (if any completed uploads)
+      if (b2Videos.length > 0) formData.append('b2Videos', JSON.stringify(b2Videos));
 
       // Add server files (images + small videos)
       for (const file of serverFiles) {
