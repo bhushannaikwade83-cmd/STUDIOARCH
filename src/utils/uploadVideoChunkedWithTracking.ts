@@ -136,9 +136,9 @@ export async function uploadVideoChunkedWithTracking(
       console.log(`📦 [CHUNKED] Chunk ${uploadedChunks}/${totalChunks} (${percent}%)`);
     }
 
-    // All chunks uploaded - file being assembled on server
-    console.log('✅ [CHUNKED] All chunks uploaded, file being assembled on server');
-    await reportProgress(uploadId, projectId, 100, 'reassembling');
+    // All chunks uploaded - now finalize (reassemble chunks into final file)
+    console.log('✅ [CHUNKED] All chunks uploaded, calling finalize endpoint');
+    reportProgress(uploadId, projectId, 100, 'reassembling');
 
     onProgress?.({
       uploadId,
@@ -148,11 +148,35 @@ export async function uploadVideoChunkedWithTracking(
       status: 'reassembling',
     });
 
-    // Return placeholder URL - backend will generate real filename during finalize
-    const url = `${API_BASE}/studioarch/uploads/videos/uploaded_${Date.now()}.mp4`;
+    // Call finalize endpoint to reassemble chunks
+    try {
+      const finalizeResponse = await fetch(`${API_BASE}/studioarch/api/upload-chunk.php?action=finalize&uploadId=${uploadId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token || ''}`,
+        },
+      });
 
-    console.log('✅ [CHUNKED] Upload complete (file assembling server-side)');
-    return url;
+      if (!finalizeResponse.ok) {
+        throw new Error(`Finalize failed: HTTP ${finalizeResponse.status}`);
+      }
+
+      const finalizeResult = await finalizeResponse.json();
+      if (!finalizeResult.success) {
+        throw new Error(finalizeResult.error || 'Finalize failed');
+      }
+
+      const url = finalizeResult.data?.url || finalizeResult.url || `${API_BASE}/studioarch/uploads/videos/${finalizeResult.filename}`;
+      console.log('✅ [CHUNKED] Finalize complete, file ready:', url);
+      reportProgress(uploadId, projectId, 100, 'completed');
+
+      return url;
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Finalize failed';
+      console.error('❌ [CHUNKED] Finalize error:', errorMsg);
+      reportProgress(uploadId, projectId, 100, 'failed', errorMsg);
+      throw err;
+    }
 
   } catch (error) {
     console.error('❌ [CHUNKED] Error:', error);
