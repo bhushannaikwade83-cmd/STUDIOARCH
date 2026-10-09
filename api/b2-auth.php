@@ -20,6 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   exit();
 }
 
+// This endpoint hands out live B2 upload credentials; it must only be
+// reachable by an authenticated admin, not any anonymous caller.
+requireAuth();
+
 try {
   // B2 Credentials from environment variables
   $b2_key_id = getenv('B2_KEY_ID');

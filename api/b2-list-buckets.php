@@ -4,6 +4,8 @@ require_once __DIR__ . '/config.php';
 
 header('Content-Type: application/json');
 
+requireAuth();
+
 try {
   $b2_key_id = getenv('B2_KEY_ID');
   $b2_app_key = getenv('B2_APP_KEY');

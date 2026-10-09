@@ -187,6 +187,7 @@ function markUploadFailed($conn, $uploadId, $error) {
 // REST API
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
+    verifyToken();
     $action = $_GET['action'] ?? null;
     $input = json_decode(file_get_contents('php://input'), true);
 

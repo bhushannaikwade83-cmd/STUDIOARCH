@@ -12,14 +12,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   exit();
 }
 
-// Database Configuration
-$db_host = 'localhost';
-$db_user = 'digitrix_studioarchwebsite';
-$db_pass = 'studioarch@70';
-$db_name = 'digitrix_studioarchwebsite';
+// Database Configuration - from environment, never hardcoded (this file is
+// committed to git, so a baked-in secret here is leaked to every clone)
+$db_host = getenv('DB_HOST') ?: 'localhost';
+$db_user = getenv('DB_USER') ?: 'digitrix_studioarchwebsite';
+$db_pass = getenv('DB_PASSWORD');
+$db_name = getenv('DB_NAME') ?: 'digitrix_studioarchwebsite';
 
-// JWT Secret (keep same as Node backend)
-$jwt_secret = 'your_super_secret_jwt_key_change_this_in_production';
+// JWT Secret (must match the Node backend's JWT_SECRET)
+$jwt_secret = getenv('JWT_SECRET');
+
+if (!$db_pass || !$jwt_secret) {
+  http_response_code(500);
+  error_log('[AUTH] Missing required DB_PASSWORD or JWT_SECRET environment variable');
+  echo json_encode(['error' => 'Server misconfigured']);
+  exit();
+}
 
 // Get JSON input - try multiple methods
 $input = [];

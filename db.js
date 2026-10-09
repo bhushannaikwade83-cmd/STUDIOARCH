@@ -2,10 +2,14 @@ import mysql from 'mysql2/promise.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+if (!process.env.DB_PASSWORD || !process.env.JWT_SECRET) {
+  throw new Error('DB_PASSWORD and JWT_SECRET environment variables are required - refusing to start with a hardcoded/weak default');
+}
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'digitrix_studioarchwebsite',
-  password: process.env.DB_PASSWORD || 'studioarch@70',
+  password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME || 'digitrix_studioarchwebsite',
   waitForConnections: true,
   connectionLimit: 10,
@@ -162,7 +166,7 @@ export async function loginUser(email, password) {
 
   const token = jwt.sign(
     { id: user.id, email: user.email, role: user.role },
-    process.env.JWT_SECRET || 'secret',
+    process.env.JWT_SECRET,
     { expiresIn: '24h' }
   );
 
@@ -172,7 +176,7 @@ export async function loginUser(email, password) {
 
 export function verifyToken(token) {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     return decoded;
   } catch (error) {
     console.error('❌ [Auth] Token verification failed:', error.message);

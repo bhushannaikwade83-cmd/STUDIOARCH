@@ -357,7 +357,7 @@ export default function Projects() {
                     )}
 
                     {/* Main Image */}
-                    <div className="h-[750px] flex-1 rounded-lg overflow-hidden shadow-lg bg-stone-900">
+                    <div className="h-[300px] sm:h-[450px] md:h-[600px] lg:h-[750px] min-w-0 flex-1 rounded-lg overflow-hidden shadow-lg bg-stone-900">
                       {isVideoUrl(selectedProject.media[selectedImageIndex]) ? (
                         <motion.div
                           key={selectedImageIndex}
@@ -429,7 +429,7 @@ export default function Projects() {
 
                   {/* Image Navigation Thumbnails */}
                   {selectedProject.media.length > 1 && (
-                    <div className={`flex gap-4 pb-2 ${selectedProject.media.length <= 5 ? 'justify-center' : 'overflow-x-auto'}`}>
+                    <div className={`flex gap-4 pb-2 overflow-x-auto ${selectedProject.media.length <= 5 ? 'md:justify-center' : ''}`}>
                       {selectedProject.media.map((img, idx) => (
                         <motion.button
                           key={idx}
@@ -469,8 +469,12 @@ export default function Projects() {
                 </motion.div>
               )}
 
-              {/* Location Map Section */}
-              {selectedProject.locationmapurl && (
+              {/* Location Map Section. Only render known-safe Google Maps
+                  embed URLs in the iframe - the field is admin-only today,
+                  but validating here means a bad/malicious value can never
+                  be rendered to every site visitor regardless of how it
+                  entered the database. */}
+              {selectedProject.locationmapurl && /^https:\/\/www\.google\.com\/maps\/embed/.test(selectedProject.locationmapurl) && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}

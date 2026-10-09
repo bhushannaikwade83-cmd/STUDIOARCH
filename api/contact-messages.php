@@ -5,6 +5,7 @@ require_once 'config.php';
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
+  requireAuth();
   $conn = getConnection();
   $result = $conn->query('SELECT * FROM contact_messages ORDER BY created_at DESC');
   $messages = [];

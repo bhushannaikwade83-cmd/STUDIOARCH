@@ -7,17 +7,31 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
-// Get database credentials from environment or hardcode
+// This script is meant to run only from the cron job, never as a public
+// HTTP endpoint - it holds no admin-auth check of its own and would
+// otherwise let anyone trigger B2 uploads/spend by requesting this URL.
+if (PHP_SAPI !== 'cli') {
+  http_response_code(403);
+  die(json_encode(['error' => 'Forbidden: CLI only']));
+}
+
+// Get database credentials from environment (no hardcoded fallback - a
+// missing env var should fail loudly, not silently use a weak default)
 $db_host = getenv('DB_HOST') ?: 'localhost';
-$db_user = getenv('DB_USER') ?: 'root';
-$db_pass = getenv('DB_PASSWORD') ?: '';
+$db_user = getenv('DB_USER');
+$db_pass = getenv('DB_PASSWORD');
 $db_name = getenv('DB_NAME') ?: 'studioarch';
 
-// B2 credentials
-$b2_key_id = getenv('B2_KEY_ID') ?: '379cd0b52bbf';
-$b2_app_key = getenv('B2_APP_KEY') ?: '0040a614cfa7c97e3de2377263ad7e9b55c68b587d';
-$b2_bucket_id = getenv('B2_BUCKET_ID') ?: 'e317695cfd60fbd5a20b0b1f';
+// B2 credentials - must come from environment, never hardcoded in source
+$b2_key_id = getenv('B2_KEY_ID');
+$b2_app_key = getenv('B2_APP_KEY');
+$b2_bucket_id = getenv('B2_BUCKET_ID');
 $b2_bucket_name = getenv('B2_BUCKET_NAME') ?: 'STUDIO-ARCH2';
+
+if (!$db_user || !$b2_key_id || !$b2_app_key || !$b2_bucket_id) {
+  fwrite(STDERR, "Missing required environment variables (DB_USER/B2_KEY_ID/B2_APP_KEY/B2_BUCKET_ID)\n");
+  exit(1);
+}
 
 const CHUNK_SIZE = 6 * 1024 * 1024; // 6MB chunks
 

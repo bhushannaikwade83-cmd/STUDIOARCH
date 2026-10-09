@@ -6,14 +6,23 @@ ini_set('upload_max_filesize', '600M'); // 600MB max file
 ini_set('post_max_size', '600M');       // 600MB max POST
 
 // Database Configuration (Shared by all API endpoints)
+// Credentials must come from environment variables, never be hardcoded in
+// source - this file is committed to git, and a password/secret baked in
+// here is leaked to anyone who has ever cloned the repo.
 
-$db_host = 'localhost';
-$db_user = 'digitrix_studioarchwebsite';
-$db_pass = 'studioarch@70';
-$db_name = 'digitrix_studioarchwebsite';
+$db_host = getenv('DB_HOST') ?: 'localhost';
+$db_user = getenv('DB_USER') ?: 'digitrix_studioarchwebsite';
+$db_pass = getenv('DB_PASSWORD');
+$db_name = getenv('DB_NAME') ?: 'digitrix_studioarchwebsite';
 
-// JWT Secret (must match frontend)
-$jwt_secret = 'your_super_secret_jwt_key_change_this_in_production';
+// JWT Secret (must match frontend/issuer) - required, no weak default
+$jwt_secret = getenv('JWT_SECRET');
+
+if (!$db_pass || !$jwt_secret) {
+  http_response_code(500);
+  error_log('[CONFIG] Missing required DB_PASSWORD or JWT_SECRET environment variable');
+  die(json_encode(['error' => 'Server misconfigured']));
+}
 
 // API Base URL
 $api_base = 'https://digitrixmedia.com/studioarch/api';
@@ -79,7 +88,7 @@ function verifyToken() {
   // Verify signature
   $valid_signature = base64_encode(hash_hmac('sha256', "$header.$payload", $jwt_secret, true));
 
-  if ($signature !== $valid_signature) {
+  if (!hash_equals($valid_signature, $signature)) {
     throw new Exception('Invalid signature');
   }
 

@@ -13,6 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   exit();
 }
 
+requireAuth();
+
 try {
   $rawInput = file_get_contents('php://input');
   error_log('[B2-INITIATE] Raw input: ' . $rawInput);

@@ -2,14 +2,19 @@ const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2/promise');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
+if (!process.env.DB_PASSWORD || !process.env.JWT_SECRET) {
+  throw new Error('DB_PASSWORD and JWT_SECRET environment variables are required - refusing to start with a hardcoded/weak default');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key_change_this_in_production';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 console.log('\n🚀 StudioArch Backend (Node.js)');
 console.log('  Port:', PORT);
@@ -23,7 +28,7 @@ async function initDb() {
     pool = mysql.createPool({
       host: process.env.DB_HOST || 'localhost',
       user: process.env.DB_USER || 'digitrix_studioarchwebsite',
-      password: process.env.DB_PASSWORD || 'studioarch@70',
+      password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME || 'digitrix_studioarchwebsite',
       connectionLimit: 10,
       waitForConnections: true,
@@ -138,7 +143,10 @@ app.post('/studioarch/api/auth/login', async (req, res) => {
     }
 
     const user = rows[0];
-    // TODO: Verify password hash
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
 
     res.json({ token, user: { id: user.id, email: user.email } });

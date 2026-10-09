@@ -91,16 +91,28 @@ function processUploadedFiles($fileInputName = 'files') {
       continue;
     }
 
-    $fileType = $files['type'][$i];
     $tmpPath = $files['tmp_name'][$i];
     $fileSize = $files['size'][$i];
 
-    // Validate
-    $isImage = strpos($fileType, 'image/') === 0;
-    $isVideo = strpos($fileType, 'video/') === 0;
+    // Never trust the client-supplied Content-Type header (trivially
+    // spoofed) - detect the real MIME type by inspecting the file itself.
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $realMimeType = finfo_file($finfo, $tmpPath);
+    finfo_close($finfo);
+
+    $allowedImageTypes = [
+      'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif',
+      'image/webp' => 'webp', 'image/avif' => 'avif',
+    ];
+    $allowedVideoTypes = [
+      'video/mp4' => 'mp4', 'video/webm' => 'webm', 'video/quicktime' => 'mov',
+    ];
+
+    $isImage = isset($allowedImageTypes[$realMimeType]);
+    $isVideo = isset($allowedVideoTypes[$realMimeType]);
 
     if (!$isImage && !$isVideo) {
-      error_log('[ERROR] Invalid file type for ' . $fileName . ': ' . $fileType);
+      error_log('[ERROR] Invalid/unsupported file type for ' . $fileName . ': detected ' . $realMimeType);
       $failedUploads[] = ['name' => $fileName, 'reason' => 'Only images and videos are allowed'];
       continue;
     }
@@ -118,10 +130,12 @@ function processUploadedFiles($fileInputName = 'files') {
       mkdir($uploadDir, 0777, true);
     }
 
-    // Generate unique filename (uniqid prevents collisions when several
-    // files land in the same second)
-    $safeName = preg_replace('/[^a-zA-Z0-9.-]/', '_', $fileName);
-    $uniqueFileName = time() . '-' . uniqid() . '-' . $safeName;
+    // Generate a unique filename with an extension derived from the
+    // DETECTED mime type, not the client-supplied one - this guarantees an
+    // uploaded "shell.php" disguised with Content-Type: image/jpeg can
+    // never land on disk with a .php extension.
+    $extension = $isImage ? $allowedImageTypes[$realMimeType] : $allowedVideoTypes[$realMimeType];
+    $uniqueFileName = time() . '-' . uniqid() . '.' . $extension;
     $filePath = $uploadDir . '/' . $uniqueFileName;
 
     // Move uploaded file
