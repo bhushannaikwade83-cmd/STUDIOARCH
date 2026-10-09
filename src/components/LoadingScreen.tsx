@@ -12,7 +12,7 @@ export function LoadingScreen() {
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           className="flex justify-center"
         >
-          <img src="/logo-color.png" alt="Loading..." className="h-48 w-auto md:h-64 drop-shadow-lg" />
+          <img src="/logo-color.png?v=3" alt="Loading..." className="h-48 w-auto md:h-64 drop-shadow-lg" />
         </motion.div>
         <motion.div
           animate={{ opacity: [0.5, 1, 0.5] }}
@@ -38,7 +38,7 @@ export function LoadingScreenWithText(props: { text?: string }) {
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           className="flex justify-center"
         >
-          <img src="/logo-color.png" alt={text} className="h-48 w-auto md:h-64 drop-shadow-lg" />
+          <img src="/logo-color.png?v=3" alt={text} className="h-48 w-auto md:h-64 drop-shadow-lg" />
         </motion.div>
         <motion.div
           animate={{ opacity: [0.5, 1, 0.5] }}

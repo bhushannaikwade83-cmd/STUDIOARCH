@@ -1392,7 +1392,7 @@ export default function Admin() {
           >
             <div className="relative w-40 h-12 md:w-48 md:h-16">
               <motion.img
-                src="/logo-bw.png"
+                src="/logo-bw.png?v=3"
                 alt="1StudioArch"
                 className="absolute inset-0 w-full h-full object-contain"
                 animate={{ opacity: 1 }}
@@ -1400,7 +1400,7 @@ export default function Admin() {
                 transition={{ duration: 0.3 }}
               />
               <motion.img
-                src="/logo-color.png"
+                src="/logo-color.png?v=3"
                 alt="1StudioArch"
                 className="absolute inset-0 w-full h-full object-contain"
                 animate={{ opacity: 0 }}
@@ -1526,8 +1526,8 @@ export default function Admin() {
             </motion.button>
             <Link to="/" className="group hover:opacity-90 transition-opacity">
               <div className="relative w-48 h-14">
-                <img src="/logo-bw.png" alt="1StudioArch" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-300 opacity-100 group-hover:opacity-0" />
-                <img src="/logo-color.png" alt="1StudioArch" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-300 opacity-0 group-hover:opacity-100" />
+                <img src="/logo-bw.png?v=3" alt="1StudioArch" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-300 opacity-100 group-hover:opacity-0" />
+                <img src="/logo-color.png?v=3" alt="1StudioArch" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-300 opacity-0 group-hover:opacity-100" />
               </div>
             </Link>
           </div>
@@ -1769,7 +1769,7 @@ export default function Admin() {
                   <div className="py-12">
                     <div className="bg-white/5 border border-white/10 rounded-lg p-12 text-center">
                       <motion.img
-                        src="/logo-bw.png"
+                        src="/logo-bw.png?v=3"
                         alt="Loading..."
                         className="h-32 w-auto mx-auto mb-4"
                         animate={{ opacity: [0.5, 1, 0.5] }}
@@ -2003,7 +2003,7 @@ export default function Admin() {
                   <div className="py-12">
                     <div className="bg-white/5 border border-white/10 rounded-lg p-12 text-center">
                       <motion.img
-                        src="/logo-bw.png"
+                        src="/logo-bw.png?v=3"
                         alt="Loading..."
                         className="h-32 w-auto mx-auto mb-4"
                         animate={{ opacity: [0.5, 1, 0.5] }}
@@ -2080,7 +2080,7 @@ export default function Admin() {
                   <div className="py-12">
                     <div className="bg-white/5 border border-white/10 rounded-lg p-12 text-center">
                       <motion.img
-                        src="/logo-bw.png"
+                        src="/logo-bw.png?v=3"
                         alt="Loading..."
                         className="h-32 w-auto mx-auto mb-4"
                         animate={{ opacity: [0.5, 1, 0.5] }}

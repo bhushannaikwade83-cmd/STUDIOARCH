@@ -160,7 +160,7 @@ export default function Projects() {
             className="relative w-40 h-12 md:w-48 md:h-16"
           >
             <motion.img
-              src="/logo-bw.png"
+              src="/logo-bw.png?v=3"
               alt="1StudioArch"
               className="absolute inset-0 w-full h-full object-contain"
               animate={{ opacity: 1 }}
@@ -168,7 +168,7 @@ export default function Projects() {
               transition={{ duration: 0.3 }}
             />
             <motion.img
-              src="/logo-color.png"
+              src="/logo-color.png?v=3"
               alt="1StudioArch"
               className="absolute inset-0 w-full h-full object-contain"
               animate={{ opacity: 0 }}
