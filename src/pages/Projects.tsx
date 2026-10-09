@@ -337,7 +337,7 @@ export default function Projects() {
                   className="w-full mb-12 -mx-8 px-8"
                 >
                   <div className="relative flex items-center gap-4 mb-8">
-                    {/* Previous Button */}
+                    {/* Previous Button - hidden on mobile; swipe the image instead */}
                     {selectedProject.media.length > 1 && (
                       <motion.button
                         whileHover={{ scale: 1.1 }}
@@ -350,13 +350,14 @@ export default function Projects() {
                             setSelectedImageIndex((prev) => (prev + 1) % selectedProject.media.length);
                           }, 5000);
                         }}
-                        className="p-3 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
+                        className="hidden md:flex p-3 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
                       >
                         <ChevronLeft size={24} className="text-white" />
                       </motion.button>
                     )}
 
-                    {/* Main Image */}
+                    {/* Main Image - full image always visible (object-contain,
+                        no cropping); swipe left/right to change on touch devices */}
                     <div className="h-[300px] sm:h-[450px] md:h-[600px] lg:h-[750px] min-w-0 flex-1 rounded-lg overflow-hidden shadow-lg bg-stone-900">
                       {isVideoUrl(selectedProject.media[selectedImageIndex]) ? (
                         <motion.div
@@ -394,15 +395,30 @@ export default function Projects() {
                           key={selectedImageIndex}
                           src={selectedProject.media[selectedImageIndex]}
                           alt={`${selectedProject.name} - View ${selectedImageIndex + 1}`}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain touch-pan-y"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ duration: 0.5 }}
+                          drag="x"
+                          dragConstraints={{ left: 0, right: 0 }}
+                          dragElastic={0.6}
+                          onDragEnd={(_, info) => {
+                            const swipeThreshold = 50;
+                            if (info.offset.x <= -swipeThreshold) {
+                              setSelectedImageIndex((selectedImageIndex + 1) % selectedProject.media.length);
+                            } else if (info.offset.x >= swipeThreshold) {
+                              setSelectedImageIndex((selectedImageIndex - 1 + selectedProject.media.length) % selectedProject.media.length);
+                            }
+                            if (slideshowIntervalRef.current) clearInterval(slideshowIntervalRef.current);
+                            slideshowIntervalRef.current = setInterval(() => {
+                              setSelectedImageIndex((prev) => (prev + 1) % selectedProject.media.length);
+                            }, 5000);
+                          }}
                         />
                       )}
                     </div>
 
-                    {/* Next Button */}
+                    {/* Next Button - hidden on mobile; swipe the image instead */}
                     {selectedProject.media.length > 1 && (
                       <motion.button
                         whileHover={{ scale: 1.1 }}
@@ -415,7 +431,7 @@ export default function Projects() {
                             setSelectedImageIndex((prev) => (prev + 1) % selectedProject.media.length);
                           }, 5000);
                         }}
-                        className="p-3 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
+                        className="hidden md:flex p-3 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
                       >
                         <ChevronRight size={24} className="text-white" />
                       </motion.button>
