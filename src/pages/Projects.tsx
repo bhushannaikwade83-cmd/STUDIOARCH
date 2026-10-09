@@ -356,9 +356,12 @@ export default function Projects() {
                       </motion.button>
                     )}
 
-                    {/* Main Image - full image always visible (object-contain,
-                        no cropping); swipe left/right to change on touch devices */}
-                    <div className="h-[300px] sm:h-[450px] md:h-[600px] lg:h-[750px] min-w-0 flex-1 rounded-lg overflow-hidden shadow-lg bg-stone-900">
+                    {/* Main Image - below sm the box has no fixed height, so
+                        it sizes itself to the image's own aspect ratio and
+                        fills the full width with no letterboxing; sm+ keeps
+                        a fixed height with object-contain. Swipe left/right
+                        to change on touch devices. */}
+                    <div className="w-full sm:h-[450px] md:h-[600px] lg:h-[750px] min-w-0 flex-1 rounded-lg overflow-hidden shadow-lg bg-stone-900">
                       {isVideoUrl(selectedProject.media[selectedImageIndex]) ? (
                         <motion.div
                           key={selectedImageIndex}
@@ -378,7 +381,7 @@ export default function Projects() {
                             loop
                             controlsList="nodownload"
                             preload="metadata"
-                            className="w-full h-full object-contain"
+                            className="w-full h-auto sm:h-full object-contain"
                             style={{ background: '#1c1917' }}
                             onError={(e) => {
                               const video = e.target as HTMLVideoElement;
@@ -395,7 +398,7 @@ export default function Projects() {
                           key={selectedImageIndex}
                           src={selectedProject.media[selectedImageIndex]}
                           alt={`${selectedProject.name} - View ${selectedImageIndex + 1}`}
-                          className="w-full h-full object-contain touch-pan-y"
+                          className="w-full h-auto sm:h-full object-contain touch-pan-y"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ duration: 0.5 }}
