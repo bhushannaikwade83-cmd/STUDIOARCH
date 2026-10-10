@@ -2,6 +2,11 @@
 // Chunked upload handler - receives chunks and reassembles them
 require_once __DIR__ . '/config.php';
 
+// CRITICAL: Set long timeout for finalize (reassembling large files takes time)
+ini_set('max_execution_time', 1200);   // 20 minutes for finalize
+ini_set('memory_limit', '512M');       // More memory for reassembly
+set_time_limit(1200);                   // Also set via set_time_limit
+
 header('Content-Type: application/json');
 
 try {
